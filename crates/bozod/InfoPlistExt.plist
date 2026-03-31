@@ -1,0 +1,4 @@
+<key>NSBluetoothAlwaysUsageDescription</key>
+<string>bozod needs Bluetooth to communicate with your Bose headphones</string>
+<key>LSBackgroundOnly</key>
+<true/>

@@ -1,0 +1,22 @@
+[package]
+name = "bozo"
+version = "0.1.0"
+edition = "2021"
+
+[package.metadata.bundle]
+name = "bozo"
+identifier = "dev.bozo.bozo"
+short_description = "Bose QC Ultra headphone control"
+osx_info_plist_exts = ["InfoPlistExt.plist"]
+
+[dependencies]
+bozo-proto = { path = "../bozo-proto" }
+tokio = { workspace = true }
+serde = { workspace = true }
+serde_json = { workspace = true }
+tracing = { workspace = true }
+tracing-subscriber = { workspace = true }
+anyhow = "1"
+which = "7"
+ratatui = "0.29"
+crossterm = "0.28"
