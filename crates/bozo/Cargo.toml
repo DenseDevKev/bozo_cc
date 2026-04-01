@@ -1,7 +1,15 @@
 [package]
 name = "bozo"
-version = "0.1.0"
-edition = "2021"
+version.workspace = true
+edition.workspace = true
+authors.workspace = true
+license.workspace = true
+repository.workspace = true
+homepage.workspace = true
+description = "Terminal UI for controlling Bose QC Ultra headphones"
+readme = "README.md"
+keywords = ["bose", "bluetooth", "ble", "headphones", "tui"]
+categories = ["command-line-utilities", "hardware-support"]
 
 [package.metadata.bundle]
 name = "bozo"
@@ -10,7 +18,7 @@ short_description = "Bose QC Ultra headphone control"
 osx_info_plist_exts = ["InfoPlistExt.plist"]
 
 [dependencies]
-bozo-proto = { path = "../bozo-proto" }
+bozo-proto = { path = "../bozo-proto", version = "0.1.0" }
 tokio = { workspace = true }
 serde = { workspace = true }
 serde_json = { workspace = true }

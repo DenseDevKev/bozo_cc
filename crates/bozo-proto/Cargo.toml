@@ -1,7 +1,15 @@
 [package]
 name = "bozo-proto"
-version = "0.1.0"
-edition = "2021"
+version.workspace = true
+edition.workspace = true
+authors.workspace = true
+license.workspace = true
+repository.workspace = true
+homepage.workspace = true
+description = "BMAP protocol codec and IPC types for Bose QC Ultra headphones over BLE"
+readme = "README.md"
+keywords = ["bose", "bluetooth", "ble", "headphones", "bmap"]
+categories = ["encoding", "hardware-support", "parser-implementations"]
 
 [dependencies]
 serde = { workspace = true }
