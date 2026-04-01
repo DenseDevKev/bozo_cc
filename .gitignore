@@ -12,5 +12,8 @@ devenv.local.yaml
 # Rust
 target/
 
+# Swift
+bozo-bar/.build/
+
 # Decompiled APK (not redistributable)
 vendor/
