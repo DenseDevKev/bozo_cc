@@ -48,7 +48,7 @@ targets:
     sources:
       - path: ProtocolProbe
     info:
-      path: Config/Info.plist
+      path: Config/ProbeInfo.plist
     entitlements:
       path: Config/Probe.entitlements
     dependencies:
