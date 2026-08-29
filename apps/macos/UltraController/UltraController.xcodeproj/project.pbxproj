@@ -1,0 +1,699 @@
+// !$*UTF8*$!
+{
+	archiveVersion = 1;
+	classes = {
+	};
+	objectVersion = 77;
+	objects = {
+
+/* Begin PBXBuildFile section */
+		0BA7700BE8305910B39B9CFB /* UltraControllerApp.swift in Sources */ = {isa = PBXBuildFile; fileRef = DAF0B09E1697D349C3AE8B58 /* UltraControllerApp.swift */; };
+		0D90834AEA85C6A84365E575 /* UltraControllerUITestSmokeTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 23B744037CA326868E989EAA /* UltraControllerUITestSmokeTests.swift */; };
+		2E231029D0FAF8C6DBAF1661 /* PlaceholderOverviewView.swift in Sources */ = {isa = PBXBuildFile; fileRef = F3F9B6256F6A802FAF5915E1 /* PlaceholderOverviewView.swift */; };
+		33EA329860EBDC3805B86580 /* HeadphoneCore in Frameworks */ = {isa = PBXBuildFile; productRef = 629AA3173E3F3D1E809CF7D9 /* HeadphoneCore */; };
+		359534B18F0B7B8525D3655E /* UltraControllerSmokeTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8F607B0B0829BCB5E2EC7619 /* UltraControllerSmokeTests.swift */; };
+		4005633D52E9D4946C30AE3D /* ProtocolProbeApp.swift in Sources */ = {isa = PBXBuildFile; fileRef = B4072750119A7D63D5BA737F /* ProtocolProbeApp.swift */; };
+		480B8E92B923D005048FD069 /* HeadphoneCore in Frameworks */ = {isa = PBXBuildFile; productRef = 6B5AE84B8E68E39C1A371FF0 /* HeadphoneCore */; };
+		48218DFA94DE1FCAB376EF2D /* XCTestAsyncSupport.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7E0D4FE536C065BDBA5F0584 /* XCTestAsyncSupport.swift */; };
+		5BC63217768A58B07DA373B0 /* HeadphoneCore in Frameworks */ = {isa = PBXBuildFile; productRef = 4C5686A4EBB2B827C72344F2 /* HeadphoneCore */; };
+/* End PBXBuildFile section */
+
+/* Begin PBXContainerItemProxy section */
+		0451925CA990F4660A79E920 /* PBXContainerItemProxy */ = {
+			isa = PBXContainerItemProxy;
+			containerPortal = FB28A1901A1407AD8A6A95E6 /* Project object */;
+			proxyType = 1;
+			remoteGlobalIDString = 12431D8A9DB41BE47082279A;
+			remoteInfo = UltraController;
+		};
+		7A34BE8B0676FA9C18A4C338 /* PBXContainerItemProxy */ = {
+			isa = PBXContainerItemProxy;
+			containerPortal = FB28A1901A1407AD8A6A95E6 /* Project object */;
+			proxyType = 1;
+			remoteGlobalIDString = 12431D8A9DB41BE47082279A;
+			remoteInfo = UltraController;
+		};
+/* End PBXContainerItemProxy section */
+
+/* Begin PBXFileReference section */
+		23B744037CA326868E989EAA /* UltraControllerUITestSmokeTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = UltraControllerUITestSmokeTests.swift; sourceTree = "<group>"; };
+		5EB3C299506ABC31EEBB7774 /* UltraController.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = UltraController.app; sourceTree = BUILT_PRODUCTS_DIR; };
+		6569A39AA70B1C43BA1E04A5 /* UltraControllerUITests.xctest */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = UltraControllerUITests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
+		7E0D4FE536C065BDBA5F0584 /* XCTestAsyncSupport.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = XCTestAsyncSupport.swift; sourceTree = "<group>"; };
+		8B02747DAF5AEC660E1518E0 /* HeadphoneCore */ = {isa = PBXFileReference; lastKnownFileType = folder; name = HeadphoneCore; path = Packages/HeadphoneCore; sourceTree = SOURCE_ROOT; };
+		8CBE54AB2400C77AA4DBDD41 /* Release.xcconfig */ = {isa = PBXFileReference; lastKnownFileType = text.xcconfig; path = Release.xcconfig; sourceTree = "<group>"; };
+		8F607B0B0829BCB5E2EC7619 /* UltraControllerSmokeTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = UltraControllerSmokeTests.swift; sourceTree = "<group>"; };
+		A83BA4B23EC91335112A5DF6 /* UltraControllerTests.xctest */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = UltraControllerTests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
+		B4072750119A7D63D5BA737F /* ProtocolProbeApp.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ProtocolProbeApp.swift; sourceTree = "<group>"; };
+		DAF0B09E1697D349C3AE8B58 /* UltraControllerApp.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = UltraControllerApp.swift; sourceTree = "<group>"; };
+		DC19D7CEB4FDEDECE8EB4792 /* UltraControllerProtocolProbe.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = UltraControllerProtocolProbe.app; sourceTree = BUILT_PRODUCTS_DIR; };
+		EB8287D14CCC8422E7C6AE0D /* Debug.xcconfig */ = {isa = PBXFileReference; lastKnownFileType = text.xcconfig; path = Debug.xcconfig; sourceTree = "<group>"; };
+		F3F9B6256F6A802FAF5915E1 /* PlaceholderOverviewView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PlaceholderOverviewView.swift; sourceTree = "<group>"; };
+/* End PBXFileReference section */
+
+/* Begin PBXFrameworksBuildPhase section */
+		1BD62BAA88B42AFDC842C219 /* Frameworks */ = {
+			isa = PBXFrameworksBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				33EA329860EBDC3805B86580 /* HeadphoneCore in Frameworks */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+		D302511DD3E5D0DE05682FB5 /* Frameworks */ = {
+			isa = PBXFrameworksBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				5BC63217768A58B07DA373B0 /* HeadphoneCore in Frameworks */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+		E94C57F01B4BA8DA6C0F8F37 /* Frameworks */ = {
+			isa = PBXFrameworksBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				480B8E92B923D005048FD069 /* HeadphoneCore in Frameworks */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+/* End PBXFrameworksBuildPhase section */
+
+/* Begin PBXGroup section */
+		0E36F30A91386D2271792B1F /* Overview */ = {
+			isa = PBXGroup;
+			children = (
+				F3F9B6256F6A802FAF5915E1 /* PlaceholderOverviewView.swift */,
+			);
+			path = Overview;
+			sourceTree = "<group>";
+		};
+		119048F7CCBA672A6C180D60 /* Tests */ = {
+			isa = PBXGroup;
+			children = (
+				1DE48DEC0F047FE8986A4D4A /* TestSupport */,
+				8F607B0B0829BCB5E2EC7619 /* UltraControllerSmokeTests.swift */,
+			);
+			path = Tests;
+			sourceTree = "<group>";
+		};
+		17E19F34C30023EEFF7F7BAC /* ProtocolProbe */ = {
+			isa = PBXGroup;
+			children = (
+				B4072750119A7D63D5BA737F /* ProtocolProbeApp.swift */,
+			);
+			path = ProtocolProbe;
+			sourceTree = "<group>";
+		};
+		1DE48DEC0F047FE8986A4D4A /* TestSupport */ = {
+			isa = PBXGroup;
+			children = (
+				7E0D4FE536C065BDBA5F0584 /* XCTestAsyncSupport.swift */,
+			);
+			path = TestSupport;
+			sourceTree = "<group>";
+		};
+		210D10B3F8ABD751C911B6B4 /* Config */ = {
+			isa = PBXGroup;
+			children = (
+				EB8287D14CCC8422E7C6AE0D /* Debug.xcconfig */,
+				8CBE54AB2400C77AA4DBDD41 /* Release.xcconfig */,
+			);
+			path = Config;
+			sourceTree = "<group>";
+		};
+		28D1BA435C242188580DDBED = {
+			isa = PBXGroup;
+			children = (
+				437C5441BCF460B11C98863D /* App */,
+				210D10B3F8ABD751C911B6B4 /* Config */,
+				81F3ABECA913FEF0BB4CC6CD /* Packages */,
+				17E19F34C30023EEFF7F7BAC /* ProtocolProbe */,
+				119048F7CCBA672A6C180D60 /* Tests */,
+				6165BC8107DCDBAE0B020601 /* UITests */,
+				A8FD165E4D8BD99B51F849D9 /* Products */,
+			);
+			sourceTree = "<group>";
+		};
+		437C5441BCF460B11C98863D /* App */ = {
+			isa = PBXGroup;
+			children = (
+				5EC2E310D306DE7D2C168E46 /* Application */,
+				0E36F30A91386D2271792B1F /* Overview */,
+			);
+			path = App;
+			sourceTree = "<group>";
+		};
+		5EC2E310D306DE7D2C168E46 /* Application */ = {
+			isa = PBXGroup;
+			children = (
+				DAF0B09E1697D349C3AE8B58 /* UltraControllerApp.swift */,
+			);
+			path = Application;
+			sourceTree = "<group>";
+		};
+		6165BC8107DCDBAE0B020601 /* UITests */ = {
+			isa = PBXGroup;
+			children = (
+				23B744037CA326868E989EAA /* UltraControllerUITestSmokeTests.swift */,
+			);
+			path = UITests;
+			sourceTree = "<group>";
+		};
+		81F3ABECA913FEF0BB4CC6CD /* Packages */ = {
+			isa = PBXGroup;
+			children = (
+				8B02747DAF5AEC660E1518E0 /* HeadphoneCore */,
+			);
+			path = Packages;
+			sourceTree = "<group>";
+		};
+		A8FD165E4D8BD99B51F849D9 /* Products */ = {
+			isa = PBXGroup;
+			children = (
+				5EB3C299506ABC31EEBB7774 /* UltraController.app */,
+				DC19D7CEB4FDEDECE8EB4792 /* UltraControllerProtocolProbe.app */,
+				A83BA4B23EC91335112A5DF6 /* UltraControllerTests.xctest */,
+				6569A39AA70B1C43BA1E04A5 /* UltraControllerUITests.xctest */,
+			);
+			name = Products;
+			sourceTree = "<group>";
+		};
+/* End PBXGroup section */
+
+/* Begin PBXNativeTarget section */
+		12431D8A9DB41BE47082279A /* UltraController */ = {
+			isa = PBXNativeTarget;
+			buildConfigurationList = BE08FC56D3BFF3EDFEC830E8 /* Build configuration list for PBXNativeTarget "UltraController" */;
+			buildPhases = (
+				C6C2C698EC462E9B02DEF10A /* Sources */,
+				D302511DD3E5D0DE05682FB5 /* Frameworks */,
+			);
+			buildRules = (
+			);
+			dependencies = (
+			);
+			name = UltraController;
+			packageProductDependencies = (
+				4C5686A4EBB2B827C72344F2 /* HeadphoneCore */,
+			);
+			productName = UltraController;
+			productReference = 5EB3C299506ABC31EEBB7774 /* UltraController.app */;
+			productType = "com.apple.product-type.application";
+		};
+		60354381D72E53C6BF74D1E9 /* UltraControllerProtocolProbe */ = {
+			isa = PBXNativeTarget;
+			buildConfigurationList = 3D28CC3DB8131DDD3FD21BE2 /* Build configuration list for PBXNativeTarget "UltraControllerProtocolProbe" */;
+			buildPhases = (
+				C0B1B0993704D2E656168113 /* Sources */,
+				E94C57F01B4BA8DA6C0F8F37 /* Frameworks */,
+			);
+			buildRules = (
+			);
+			dependencies = (
+			);
+			name = UltraControllerProtocolProbe;
+			packageProductDependencies = (
+				6B5AE84B8E68E39C1A371FF0 /* HeadphoneCore */,
+			);
+			productName = UltraControllerProtocolProbe;
+			productReference = DC19D7CEB4FDEDECE8EB4792 /* UltraControllerProtocolProbe.app */;
+			productType = "com.apple.product-type.application";
+		};
+		69F660B63F1B3AF4258D6E03 /* UltraControllerTests */ = {
+			isa = PBXNativeTarget;
+			buildConfigurationList = 66DAB494C8F0360117DA984E /* Build configuration list for PBXNativeTarget "UltraControllerTests" */;
+			buildPhases = (
+				2DB76107D9D60B26A096AFC6 /* Sources */,
+				1BD62BAA88B42AFDC842C219 /* Frameworks */,
+			);
+			buildRules = (
+			);
+			dependencies = (
+				667D1CD83819F95C020BE3BB /* PBXTargetDependency */,
+			);
+			name = UltraControllerTests;
+			packageProductDependencies = (
+				629AA3173E3F3D1E809CF7D9 /* HeadphoneCore */,
+			);
+			productName = UltraControllerTests;
+			productReference = A83BA4B23EC91335112A5DF6 /* UltraControllerTests.xctest */;
+			productType = "com.apple.product-type.bundle.unit-test";
+		};
+		74D9B5E3A1722F9B1107C122 /* UltraControllerUITests */ = {
+			isa = PBXNativeTarget;
+			buildConfigurationList = B273D74F12590FD963F21FE4 /* Build configuration list for PBXNativeTarget "UltraControllerUITests" */;
+			buildPhases = (
+				3A602D66982418D92C617399 /* Sources */,
+			);
+			buildRules = (
+			);
+			dependencies = (
+				79F372A691109EF60AB409EB /* PBXTargetDependency */,
+			);
+			name = UltraControllerUITests;
+			packageProductDependencies = (
+			);
+			productName = UltraControllerUITests;
+			productReference = 6569A39AA70B1C43BA1E04A5 /* UltraControllerUITests.xctest */;
+			productType = "com.apple.product-type.bundle.ui-testing";
+		};
+/* End PBXNativeTarget section */
+
+/* Begin PBXProject section */
+		FB28A1901A1407AD8A6A95E6 /* Project object */ = {
+			isa = PBXProject;
+			attributes = {
+				BuildIndependentTargetsInParallel = YES;
+				LastUpgradeCheck = 1430;
+				TargetAttributes = {
+					12431D8A9DB41BE47082279A = {
+						DevelopmentTeam = "";
+						ProvisioningStyle = Automatic;
+					};
+					60354381D72E53C6BF74D1E9 = {
+						DevelopmentTeam = "";
+						ProvisioningStyle = Automatic;
+					};
+					69F660B63F1B3AF4258D6E03 = {
+						DevelopmentTeam = "";
+						ProvisioningStyle = Automatic;
+					};
+					74D9B5E3A1722F9B1107C122 = {
+						DevelopmentTeam = "";
+						ProvisioningStyle = Automatic;
+						TestTargetID = 12431D8A9DB41BE47082279A;
+					};
+				};
+			};
+			buildConfigurationList = CDE7D072F86F218F96DF4F1F /* Build configuration list for PBXProject "UltraController" */;
+			developmentRegion = en;
+			hasScannedForEncodings = 0;
+			knownRegions = (
+				Base,
+				en,
+			);
+			mainGroup = 28D1BA435C242188580DDBED;
+			minimizedProjectReferenceProxies = 1;
+			packageReferences = (
+				876980ABA18FB9218521C241 /* XCLocalSwiftPackageReference "Packages/HeadphoneCore" */,
+			);
+			preferredProjectObjectVersion = 77;
+			productRefGroup = A8FD165E4D8BD99B51F849D9 /* Products */;
+			projectDirPath = "";
+			projectRoot = "";
+			targets = (
+				12431D8A9DB41BE47082279A /* UltraController */,
+				60354381D72E53C6BF74D1E9 /* UltraControllerProtocolProbe */,
+				69F660B63F1B3AF4258D6E03 /* UltraControllerTests */,
+				74D9B5E3A1722F9B1107C122 /* UltraControllerUITests */,
+			);
+		};
+/* End PBXProject section */
+
+/* Begin PBXSourcesBuildPhase section */
+		2DB76107D9D60B26A096AFC6 /* Sources */ = {
+			isa = PBXSourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				359534B18F0B7B8525D3655E /* UltraControllerSmokeTests.swift in Sources */,
+				48218DFA94DE1FCAB376EF2D /* XCTestAsyncSupport.swift in Sources */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+		3A602D66982418D92C617399 /* Sources */ = {
+			isa = PBXSourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				0D90834AEA85C6A84365E575 /* UltraControllerUITestSmokeTests.swift in Sources */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+		C0B1B0993704D2E656168113 /* Sources */ = {
+			isa = PBXSourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				4005633D52E9D4946C30AE3D /* ProtocolProbeApp.swift in Sources */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+		C6C2C698EC462E9B02DEF10A /* Sources */ = {
+			isa = PBXSourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				2E231029D0FAF8C6DBAF1661 /* PlaceholderOverviewView.swift in Sources */,
+				0BA7700BE8305910B39B9CFB /* UltraControllerApp.swift in Sources */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+/* End PBXSourcesBuildPhase section */
+
+/* Begin PBXTargetDependency section */
+		667D1CD83819F95C020BE3BB /* PBXTargetDependency */ = {
+			isa = PBXTargetDependency;
+			target = 12431D8A9DB41BE47082279A /* UltraController */;
+			targetProxy = 7A34BE8B0676FA9C18A4C338 /* PBXContainerItemProxy */;
+		};
+		79F372A691109EF60AB409EB /* PBXTargetDependency */ = {
+			isa = PBXTargetDependency;
+			target = 12431D8A9DB41BE47082279A /* UltraController */;
+			targetProxy = 0451925CA990F4660A79E920 /* PBXContainerItemProxy */;
+		};
+/* End PBXTargetDependency section */
+
+/* Begin XCBuildConfiguration section */
+		2B2C912A294489172796FE74 /* Debug */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ARCHS = arm64;
+				BUNDLE_LOADER = "$(TEST_HOST)";
+				COMBINE_HIDPI_IMAGES = YES;
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/Frameworks",
+					"@loader_path/Frameworks",
+				);
+				PRODUCT_BUNDLE_IDENTIFIER = dev.densedevkev.ultracontroller.uitests;
+				PRODUCT_MODULE_NAME = UltraControllerUITests;
+				SDKROOT = macosx;
+				TEST_TARGET_NAME = UltraController;
+			};
+			name = Debug;
+		};
+		2CF7132B4719A2721ED49180 /* Release */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ARCHS = arm64;
+				BUNDLE_LOADER = "$(TEST_HOST)";
+				COMBINE_HIDPI_IMAGES = YES;
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/../Frameworks",
+					"@loader_path/../Frameworks",
+				);
+				PRODUCT_BUNDLE_IDENTIFIER = dev.densedevkev.ultracontroller.tests;
+				PRODUCT_MODULE_NAME = UltraControllerTests;
+				SDKROOT = macosx;
+				TEST_HOST = "$(BUILT_PRODUCTS_DIR)/UltraController.app/Contents/MacOS/UltraController";
+			};
+			name = Release;
+		};
+		47BB9FD7D6603CD32DB6D3DF /* Debug */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ARCHS = arm64;
+				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
+				CODE_SIGN_ENTITLEMENTS = Config/Probe.entitlements;
+				COMBINE_HIDPI_IMAGES = YES;
+				INFOPLIST_FILE = Config/Info.plist;
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/../Frameworks",
+				);
+				PRODUCT_BUNDLE_IDENTIFIER = dev.densedevkev.ultracontroller.probe;
+				PRODUCT_MODULE_NAME = UltraControllerProtocolProbe;
+				PRODUCT_NAME = "Ultra Controller Protocol Probe";
+				SDKROOT = macosx;
+				SUPPORTED_PLATFORMS = macosx;
+			};
+			name = Debug;
+		};
+		4B3BA0D05C7C63664F28D492 /* Release */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ARCHS = arm64;
+				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
+				CODE_SIGN_ENTITLEMENTS = Config/App.entitlements;
+				COMBINE_HIDPI_IMAGES = YES;
+				INFOPLIST_FILE = Config/Info.plist;
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/../Frameworks",
+				);
+				PRODUCT_BUNDLE_IDENTIFIER = dev.densedevkev.ultracontroller;
+				PRODUCT_MODULE_NAME = UltraController;
+				PRODUCT_NAME = "Ultra Controller";
+				SDKROOT = macosx;
+				SUPPORTED_PLATFORMS = macosx;
+			};
+			name = Release;
+		};
+		4EB052ADF1F5801C4EA3F830 /* Debug */ = {
+			isa = XCBuildConfiguration;
+			baseConfigurationReference = EB8287D14CCC8422E7C6AE0D /* Debug.xcconfig */;
+			buildSettings = {
+				ALWAYS_SEARCH_USER_PATHS = NO;
+				CLANG_ANALYZER_NONNULL = YES;
+				CLANG_ANALYZER_NUMBER_OBJECT_CONVERSION = YES_AGGRESSIVE;
+				CLANG_CXX_LANGUAGE_STANDARD = "gnu++14";
+				CLANG_CXX_LIBRARY = "libc++";
+				CLANG_ENABLE_MODULES = YES;
+				CLANG_ENABLE_OBJC_ARC = YES;
+				CLANG_ENABLE_OBJC_WEAK = YES;
+				CLANG_WARN_BLOCK_CAPTURE_AUTORELEASING = YES;
+				CLANG_WARN_BOOL_CONVERSION = YES;
+				CLANG_WARN_COMMA = YES;
+				CLANG_WARN_CONSTANT_CONVERSION = YES;
+				CLANG_WARN_DEPRECATED_OBJC_IMPLEMENTATIONS = YES;
+				CLANG_WARN_DIRECT_OBJC_ISA_USAGE = YES_ERROR;
+				CLANG_WARN_DOCUMENTATION_COMMENTS = YES;
+				CLANG_WARN_EMPTY_BODY = YES;
+				CLANG_WARN_ENUM_CONVERSION = YES;
+				CLANG_WARN_INFINITE_RECURSION = YES;
+				CLANG_WARN_INT_CONVERSION = YES;
+				CLANG_WARN_NON_LITERAL_NULL_CONVERSION = YES;
+				CLANG_WARN_OBJC_IMPLICIT_RETAIN_SELF = YES;
+				CLANG_WARN_OBJC_LITERAL_CONVERSION = YES;
+				CLANG_WARN_OBJC_ROOT_CLASS = YES_ERROR;
+				CLANG_WARN_QUOTED_INCLUDE_IN_FRAMEWORK_HEADER = YES;
+				CLANG_WARN_RANGE_LOOP_ANALYSIS = YES;
+				CLANG_WARN_STRICT_PROTOTYPES = YES;
+				CLANG_WARN_SUSPICIOUS_MOVE = YES;
+				CLANG_WARN_UNGUARDED_AVAILABILITY = YES_AGGRESSIVE;
+				CLANG_WARN_UNREACHABLE_CODE = YES;
+				CLANG_WARN__DUPLICATE_METHOD_MATCH = YES;
+				COPY_PHASE_STRIP = NO;
+				ENABLE_STRICT_OBJC_MSGSEND = YES;
+				GCC_C_LANGUAGE_STANDARD = gnu11;
+				GCC_DYNAMIC_NO_PIC = NO;
+				GCC_NO_COMMON_BLOCKS = YES;
+				GCC_OPTIMIZATION_LEVEL = 0;
+				GCC_PREPROCESSOR_DEFINITIONS = (
+					"$(inherited)",
+					"DEBUG=1",
+				);
+				GCC_WARN_64_TO_32_BIT_CONVERSION = YES;
+				GCC_WARN_ABOUT_RETURN_TYPE = YES_ERROR;
+				GCC_WARN_UNDECLARED_SELECTOR = YES;
+				GCC_WARN_UNINITIALIZED_AUTOS = YES_AGGRESSIVE;
+				GCC_WARN_UNUSED_FUNCTION = YES;
+				GCC_WARN_UNUSED_VARIABLE = YES;
+				MTL_ENABLE_DEBUG_INFO = INCLUDE_SOURCE;
+				MTL_FAST_MATH = YES;
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				SDKROOT = macosx;
+				SWIFT_OPTIMIZATION_LEVEL = "-Onone";
+			};
+			name = Debug;
+		};
+		70F79F83500290AA504A27BD /* Release */ = {
+			isa = XCBuildConfiguration;
+			baseConfigurationReference = 8CBE54AB2400C77AA4DBDD41 /* Release.xcconfig */;
+			buildSettings = {
+				ALWAYS_SEARCH_USER_PATHS = NO;
+				CLANG_ANALYZER_NONNULL = YES;
+				CLANG_ANALYZER_NUMBER_OBJECT_CONVERSION = YES_AGGRESSIVE;
+				CLANG_CXX_LANGUAGE_STANDARD = "gnu++14";
+				CLANG_CXX_LIBRARY = "libc++";
+				CLANG_ENABLE_MODULES = YES;
+				CLANG_ENABLE_OBJC_ARC = YES;
+				CLANG_ENABLE_OBJC_WEAK = YES;
+				CLANG_WARN_BLOCK_CAPTURE_AUTORELEASING = YES;
+				CLANG_WARN_BOOL_CONVERSION = YES;
+				CLANG_WARN_COMMA = YES;
+				CLANG_WARN_CONSTANT_CONVERSION = YES;
+				CLANG_WARN_DEPRECATED_OBJC_IMPLEMENTATIONS = YES;
+				CLANG_WARN_DIRECT_OBJC_ISA_USAGE = YES_ERROR;
+				CLANG_WARN_DOCUMENTATION_COMMENTS = YES;
+				CLANG_WARN_EMPTY_BODY = YES;
+				CLANG_WARN_ENUM_CONVERSION = YES;
+				CLANG_WARN_INFINITE_RECURSION = YES;
+				CLANG_WARN_INT_CONVERSION = YES;
+				CLANG_WARN_NON_LITERAL_NULL_CONVERSION = YES;
+				CLANG_WARN_OBJC_IMPLICIT_RETAIN_SELF = YES;
+				CLANG_WARN_OBJC_LITERAL_CONVERSION = YES;
+				CLANG_WARN_OBJC_ROOT_CLASS = YES_ERROR;
+				CLANG_WARN_QUOTED_INCLUDE_IN_FRAMEWORK_HEADER = YES;
+				CLANG_WARN_RANGE_LOOP_ANALYSIS = YES;
+				CLANG_WARN_STRICT_PROTOTYPES = YES;
+				CLANG_WARN_SUSPICIOUS_MOVE = YES;
+				CLANG_WARN_UNGUARDED_AVAILABILITY = YES_AGGRESSIVE;
+				CLANG_WARN_UNREACHABLE_CODE = YES;
+				CLANG_WARN__DUPLICATE_METHOD_MATCH = YES;
+				COPY_PHASE_STRIP = NO;
+				ENABLE_NS_ASSERTIONS = NO;
+				ENABLE_STRICT_OBJC_MSGSEND = YES;
+				GCC_C_LANGUAGE_STANDARD = gnu11;
+				GCC_NO_COMMON_BLOCKS = YES;
+				GCC_WARN_64_TO_32_BIT_CONVERSION = YES;
+				GCC_WARN_ABOUT_RETURN_TYPE = YES_ERROR;
+				GCC_WARN_UNDECLARED_SELECTOR = YES;
+				GCC_WARN_UNINITIALIZED_AUTOS = YES_AGGRESSIVE;
+				GCC_WARN_UNUSED_FUNCTION = YES;
+				GCC_WARN_UNUSED_VARIABLE = YES;
+				MTL_ENABLE_DEBUG_INFO = NO;
+				MTL_FAST_MATH = YES;
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				SDKROOT = macosx;
+			};
+			name = Release;
+		};
+		7FA6C342E6470673A4899EE1 /* Debug */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ARCHS = arm64;
+				BUNDLE_LOADER = "$(TEST_HOST)";
+				COMBINE_HIDPI_IMAGES = YES;
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/../Frameworks",
+					"@loader_path/../Frameworks",
+				);
+				PRODUCT_BUNDLE_IDENTIFIER = dev.densedevkev.ultracontroller.tests;
+				PRODUCT_MODULE_NAME = UltraControllerTests;
+				SDKROOT = macosx;
+				TEST_HOST = "$(BUILT_PRODUCTS_DIR)/UltraController.app/Contents/MacOS/UltraController";
+			};
+			name = Debug;
+		};
+		8A1B6D61D7452726C8C86DA3 /* Release */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ARCHS = arm64;
+				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
+				CODE_SIGN_ENTITLEMENTS = Config/Probe.entitlements;
+				COMBINE_HIDPI_IMAGES = YES;
+				INFOPLIST_FILE = Config/Info.plist;
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/../Frameworks",
+				);
+				PRODUCT_BUNDLE_IDENTIFIER = dev.densedevkev.ultracontroller.probe;
+				PRODUCT_MODULE_NAME = UltraControllerProtocolProbe;
+				PRODUCT_NAME = "Ultra Controller Protocol Probe";
+				SDKROOT = macosx;
+				SUPPORTED_PLATFORMS = macosx;
+			};
+			name = Release;
+		};
+		9093AE7766DAE5152CB526A5 /* Release */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ARCHS = arm64;
+				BUNDLE_LOADER = "$(TEST_HOST)";
+				COMBINE_HIDPI_IMAGES = YES;
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/Frameworks",
+					"@loader_path/Frameworks",
+				);
+				PRODUCT_BUNDLE_IDENTIFIER = dev.densedevkev.ultracontroller.uitests;
+				PRODUCT_MODULE_NAME = UltraControllerUITests;
+				SDKROOT = macosx;
+				TEST_TARGET_NAME = UltraController;
+			};
+			name = Release;
+		};
+		C0E26893D7D7776A54324307 /* Debug */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ARCHS = arm64;
+				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
+				CODE_SIGN_ENTITLEMENTS = Config/App.entitlements;
+				COMBINE_HIDPI_IMAGES = YES;
+				INFOPLIST_FILE = Config/Info.plist;
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/../Frameworks",
+				);
+				PRODUCT_BUNDLE_IDENTIFIER = dev.densedevkev.ultracontroller;
+				PRODUCT_MODULE_NAME = UltraController;
+				PRODUCT_NAME = "Ultra Controller";
+				SDKROOT = macosx;
+				SUPPORTED_PLATFORMS = macosx;
+			};
+			name = Debug;
+		};
+/* End XCBuildConfiguration section */
+
+/* Begin XCConfigurationList section */
+		3D28CC3DB8131DDD3FD21BE2 /* Build configuration list for PBXNativeTarget "UltraControllerProtocolProbe" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				47BB9FD7D6603CD32DB6D3DF /* Debug */,
+				8A1B6D61D7452726C8C86DA3 /* Release */,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Debug;
+		};
+		66DAB494C8F0360117DA984E /* Build configuration list for PBXNativeTarget "UltraControllerTests" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				7FA6C342E6470673A4899EE1 /* Debug */,
+				2CF7132B4719A2721ED49180 /* Release */,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Debug;
+		};
+		B273D74F12590FD963F21FE4 /* Build configuration list for PBXNativeTarget "UltraControllerUITests" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				2B2C912A294489172796FE74 /* Debug */,
+				9093AE7766DAE5152CB526A5 /* Release */,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Debug;
+		};
+		BE08FC56D3BFF3EDFEC830E8 /* Build configuration list for PBXNativeTarget "UltraController" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				C0E26893D7D7776A54324307 /* Debug */,
+				4B3BA0D05C7C63664F28D492 /* Release */,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Debug;
+		};
+		CDE7D072F86F218F96DF4F1F /* Build configuration list for PBXProject "UltraController" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				4EB052ADF1F5801C4EA3F830 /* Debug */,
+				70F79F83500290AA504A27BD /* Release */,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Debug;
+		};
+/* End XCConfigurationList section */
+
+/* Begin XCLocalSwiftPackageReference section */
+		876980ABA18FB9218521C241 /* XCLocalSwiftPackageReference "Packages/HeadphoneCore" */ = {
+			isa = XCLocalSwiftPackageReference;
+			relativePath = Packages/HeadphoneCore;
+		};
+/* End XCLocalSwiftPackageReference section */
+
+/* Begin XCSwiftPackageProductDependency section */
+		4C5686A4EBB2B827C72344F2 /* HeadphoneCore */ = {
+			isa = XCSwiftPackageProductDependency;
+			productName = HeadphoneCore;
+		};
+		629AA3173E3F3D1E809CF7D9 /* HeadphoneCore */ = {
+			isa = XCSwiftPackageProductDependency;
+			productName = HeadphoneCore;
+		};
+		6B5AE84B8E68E39C1A371FF0 /* HeadphoneCore */ = {
+			isa = XCSwiftPackageProductDependency;
+			productName = HeadphoneCore;
+		};
+/* End XCSwiftPackageProductDependency section */
+	};
+	rootObject = FB28A1901A1407AD8A6A95E6 /* Project object */;
+}
