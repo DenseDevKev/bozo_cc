@@ -68,6 +68,8 @@ targets:
     platform: macOS
     sources:
       - path: Tests
+      - path: ProtocolProbe/ProbeEvent.swift
+      - path: ProtocolProbe/ProbeViewModel.swift
     dependencies:
       - target: UltraController
       - package: HeadphoneCore
