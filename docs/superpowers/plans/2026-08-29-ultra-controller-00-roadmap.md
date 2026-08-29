@@ -33,13 +33,13 @@
 
 | Order | Plan | Runnable checkpoint |
 |---|---|---|
-| 1 | [`2026-08-29-ultra-controller-01-foundation-protocol.md`](./2026-08-29-ultra-controller-01-foundation-protocol.md) | Sandboxed app skeleton builds; Swift BMAP codec matches Rust fixtures; a debug probe reads the physical headset. |
+| 1 | [`2026-08-29-ultra-controller-01-foundation-protocol.md`](./2026-08-29-ultra-controller-01-foundation-protocol.md) | Sandboxed app skeleton builds; Swift BMAP codec matches Rust fixtures; a signed probe reads the physical headset and safely restores essential settings. |
 | 2 | [`2026-08-29-ultra-controller-02-session-connectivity.md`](./2026-08-29-ultra-controller-02-session-connectivity.md) | One tested `HeadphoneSession` connects, synchronizes state, reconnects, and performs essential verified commands. |
 | 3 | [`2026-08-29-ultra-controller-03-native-surfaces.md`](./2026-08-29-ultra-controller-03-native-surfaces.md) | A non-terminal user can onboard, use the desktop Overview, configure Settings, and control the headset from the app menu bar. |
-| 4 | [`2026-08-29-ultra-controller-04-advanced-modes-system-controls.md`](./2026-08-29-ultra-controller-04-advanced-modes-system-controls.md) | Validated advanced mode editing works; Control Center uses the measured main-process lifecycle or the approved open-app fallback. |
-| 5 | [`2026-08-29-ultra-controller-05-release-hardening.md`](./2026-08-29-ultra-controller-05-release-hardening.md) | Accessibility, diagnostics, performance, signing, notarization, and the physical release checklist pass for a v1 candidate. |
+| 4 | [`2026-08-29-ultra-controller-04-advanced-modes-system-controls.md`](./2026-08-29-ultra-controller-04-advanced-modes-system-controls.md) | Gate A-admitted mode editing works; Gate B selects `directMainProcess`, `openAppAlways`, or `controlsExcluded`. |
+| 5 | [`2026-08-29-ultra-controller-05-release-hardening.md`](./2026-08-29-ultra-controller-05-release-hardening.md) | Accessibility, diagnostics, performance, signing, optional notarization, and physical release evidence pass for a v1 candidate. |
 
-Do not start a later plan until the prior plan's checkpoint commands pass and its physical-device evidence is committed. Plans 4 and 5 depend on the final macOS 27 SDK for Control Center release validation; protocol and ordinary app work may proceed while that API remains beta.
+Do not start a later plan until the prior plan's checkpoint commands pass and its physical-device evidence is committed. Plans 4 and 5 depend on the final macOS 27 SDK for system-control release validation; protocol and ordinary app work may proceed while the relevant API remains beta.
 
 ### Task 0: Create the implementation worktree and branch
 
@@ -53,107 +53,95 @@ Do not start a later plan until the prior plan's checkpoint commands pass and it
 
 - [ ] **Step 1: Fetch the approved design branch**
 
-Run:
-
 ```bash
 git fetch origin design/qc-ultra-macos-app
 git rev-parse --verify origin/design/qc-ultra-macos-app
 ```
 
-Expected: the second command prints a commit SHA and exits 0.
+Expected: a commit SHA and exit 0.
 
-- [ ] **Step 2: Create the isolated worktree**
-
-Run from the existing checkout:
+- [ ] **Step 2: Create isolated worktree**
 
 ```bash
 git worktree add ../bozo_cc-ultra-controller \
   -b feat/ultra-controller \
   origin/design/qc-ultra-macos-app
 cd ../bozo_cc-ultra-controller
+git branch --show-current
 ```
 
-Expected: `git branch --show-current` prints `feat/ultra-controller`.
+Expected: `feat/ultra-controller`.
 
-- [ ] **Step 3: Verify the starting tree**
-
-Run:
+- [ ] **Step 3: Verify starting tree**
 
 ```bash
 git status --short
 cargo test --workspace
 ```
 
-Expected: the working tree is clean and all existing Rust tests pass before Swift files are added.
+Expected: clean tree and existing Rust tests pass before Swift work.
 
-- [ ] **Step 4: Record the implementation base**
-
-Run:
+- [ ] **Step 4: Record base**
 
 ```bash
 git rev-parse HEAD > /tmp/ultra-controller-base-sha.txt
 cat /tmp/ultra-controller-base-sha.txt
 ```
 
-Expected: the printed SHA matches `origin/design/qc-ultra-macos-app`.
+Expected: matches `origin/design/qc-ultra-macos-app`.
 
 ### Task 1: Execute the five plans in order
 
 **Files:**
-- Modify: only the files named by the active plan.
-- Do not modify: `crates/bozo`, `crates/bozod`, or unrelated Rust behavior unless a plan explicitly names the file.
+- Modify: only files named by active plan.
+- Do not modify: `crates/bozo`, `crates/bozod`, or unrelated Rust behavior unless a plan names it.
 
 **Interfaces:**
-- Consumes: the checkpoint and public interfaces produced by the prior plan.
-- Produces: a sequence of buildable commits on `feat/ultra-controller`.
+- Consumes: prior plan's checkpoint/public interfaces.
+- Produces: buildable commits on `feat/ultra-controller`.
 
-- [ ] **Step 1: Complete Plan 1 and run its full checkpoint**
+- [ ] **Step 1: Complete Plan 1**
 
-Run the commands under Plan 1's final verification task. Do not proceed unless Swift tests, Rust parity tests, the app build, and the physical read-only probe evidence all pass.
+Do not proceed unless Swift tests, Rust parity, app build, and signed physical probe evidence pass.
 
-- [ ] **Step 2: Complete Plan 2 and run its full checkpoint**
+- [ ] **Step 2: Complete Plan 2**
 
-Run the commands under Plan 2's final verification task. Do not proceed unless fake-transport session tests, the real CoreBluetooth connection, essential command read-back, reconnect, and sleep/wake tests pass.
+Do not proceed unless fake-transport tests, real CoreBluetooth session, essential read-back, reconnect, and sleep/wake pass.
 
-- [ ] **Step 3: Complete Plan 3 and run its full checkpoint**
+- [ ] **Step 3: Complete Plan 3**
 
-Run the commands under Plan 3's final verification task. Do not proceed unless onboarding, Overview, Settings, app-menu-bar lifecycle, launch-at-login, and UI accessibility smoke tests pass.
+Do not proceed unless onboarding, Overview, Settings, app-menu-bar lifecycle, launch-at-login, localization, and accessibility smoke tests pass.
 
-- [ ] **Step 4: Complete Plan 4 and run both feasibility gates**
+- [ ] **Step 4: Complete Plan 4 and both gates**
 
-Commit the Gate A and Gate B evidence documents. Omit any advanced field that fails Gate A. Use the open-app fallback for any lifecycle state that fails Gate B; never add a second BLE owner.
+Commit Gate A/B evidence. Omit every failed/unvalidated advanced field. Select exactly one Gate B production policy: `directMainProcess`, `openAppAlways`, or `controlsExcluded`. Never guess process residency and never add a second BLE owner.
 
-- [ ] **Step 5: Complete Plan 5 and produce the release report**
+- [ ] **Step 5: Complete Plan 5**
 
-The release report must contain exact test commands, physical firmware version, Instruments measurements, signing/notarization results, and any accepted deviation from the performance targets.
+Release record contains exact commands/test counts, firmware, performance measurements, signing/notarization status, physical results, and every approved deviation.
 
 ### Task 2: Decide whether to extract the app into a standalone repository
 
 **Files:**
-- Create only after the v1 alpha checkpoint: `docs/release/repository-extraction-decision.md`
+- Create only after complete alpha: `docs/release/repository-extraction-decision.md`
 
 **Interfaces:**
-- Consumes: stable `apps/macos/UltraController` subtree and public `HeadphoneCore` interfaces.
-- Produces: an explicit keep-in-fork or extract-to-standalone decision; no code move occurs implicitly.
+- Consumes: stable isolated app subtree/public HeadphoneCore interfaces.
+- Produces: explicit keep-in-fork or standalone decision; no implicit move.
 
-- [ ] **Step 1: Measure coupling after the first complete alpha**
-
-Run:
+- [ ] **Step 1: Measure coupling**
 
 ```bash
 git log --name-only --pretty=format: -- apps/macos/UltraController fixtures/bmap \
   | sed '/^$/d' | sort -u
 ```
 
-Expected: production Swift files remain inside `apps/macos/UltraController`; shared dependencies are limited to neutral fixtures and documented attribution.
+Expected: production Swift stays in isolated subtree; shared dependencies are neutral fixtures/attribution.
 
-- [ ] **Step 2: Write the decision record**
-
-Create `docs/release/repository-extraction-decision.md` with exactly these headings:
+- [ ] **Step 2: Write decision record**
 
 ```markdown
 # Repository Extraction Decision
-
 ## Current coupling
 ## Benefits of remaining in the Bozo fork
 ## Benefits of a standalone Ultra Controller repository
@@ -162,11 +150,11 @@ Create `docs/release/repository-extraction-decision.md` with exactly these headi
 ## Migration command and rollback
 ```
 
-- [ ] **Step 3: Keep extraction outside v1 unless the decision explicitly approves it**
+- [ ] **Step 3: Keep extraction outside v1 unless explicitly approved**
 
-Do not use `git filter-repo`, subtree split, or repository creation as part of implementation plans 1–5. The app's isolated layout preserves the option without delaying a personal alpha.
+Do not run `git filter-repo`, subtree split, or repository creation in Plans 1–5.
 
-- [ ] **Step 4: Commit the decision record**
+- [ ] **Step 4: Commit decision**
 
 ```bash
 git add docs/release/repository-extraction-decision.md
