@@ -1,5 +1,9 @@
 import HeadphoneCore
 
+enum ProbeLaunchPolicy {
+    static let startsScanningAutomatically = false
+}
+
 struct ProbeCandidate: Equatable, Sendable, Identifiable {
     let name: String
     let idSuffix: String
@@ -9,10 +13,15 @@ struct ProbeCandidate: Equatable, Sendable, Identifiable {
 }
 
 struct ProbeRow: Equatable, Sendable, Identifiable {
+    let id: UInt64
     let title: String
     let detail: String
 
-    var id: String { "\(title)\u{001F}\(detail)" }
+    init(id: UInt64 = 0, title: String, detail: String) {
+        self.id = id
+        self.title = title
+        self.detail = detail
+    }
 }
 
 enum ProbePacketDirection: String, Sendable {
