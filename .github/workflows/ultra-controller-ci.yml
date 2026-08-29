@@ -65,5 +65,5 @@ jobs:
       - name: Build production macOS 27 application
         run: make macos-build
 
-      - name: Build sandboxed protocol probe
-        run: make macos-probe-build
+      - name: Build and verify sandboxed protocol probe
+        run: make macos-probe-verify-plist
