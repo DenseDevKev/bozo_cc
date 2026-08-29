@@ -28,6 +28,8 @@ targets:
       - path: Config/PrivacyInfo.xcprivacy
     info:
       path: Config/Info.plist
+      properties:
+        NSBluetoothAlwaysUsageDescription: Ultra Controller uses Bluetooth to read and change settings on your selected QC Ultra headphones.
     entitlements:
       path: Config/App.entitlements
     dependencies:
@@ -49,6 +51,8 @@ targets:
       - path: ProtocolProbe
     info:
       path: Config/ProbeInfo.plist
+      properties:
+        NSBluetoothAlwaysUsageDescription: Ultra Controller Protocol Probe uses Bluetooth to connect to your QC Ultra headphones and validate supported controls.
     entitlements:
       path: Config/Probe.entitlements
     dependencies:
