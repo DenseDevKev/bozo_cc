@@ -7,7 +7,9 @@ final class ProbeViewModel: ObservableObject {
         var status = "Initializing Bluetooth…"
         var rows: [ProbeRow] = []
         var candidates: [ProbeCandidate] = []
+        var isConnected = false
         var identity: HeadphoneIdentity?
+        var identityConfirmedForSafeWrites = false
         var battery: [BatteryComponent] = []
         var capabilities: AudioModeCapabilities?
         var modeIDs: [UInt8] = []
@@ -16,16 +18,30 @@ final class ProbeViewModel: ObservableObject {
         var standbyMinutes: UInt8?
         var spatialAudioMode: SpatialAudioMode?
 
-        var canUseSafeWrites: Bool {
+        var canConfirmSafeWrites: Bool {
             guard let productName = identity?.productName else { return false }
-            return productName.localizedCaseInsensitiveContains("QuietComfort Ultra")
+            return productName.localizedCaseInsensitiveContains("QuietComfort Ultra") ||
+                productName.localizedCaseInsensitiveContains("QC Ultra")
+        }
+
+        var canUseSafeWrites: Bool {
+            isConnected && canConfirmSafeWrites && identityConfirmedForSafeWrites
         }
 
         mutating func reduce(_ event: ProbeEvent) {
             switch event {
+            case .scanReset:
+                candidates.removeAll()
+                status = "Scanning…"
+                append(title: "Scan", detail: "Started")
+
             case let .bluetooth(message):
                 status = message
                 append(title: "Bluetooth", detail: message)
+
+            case let .scanStopped(message):
+                status = message
+                append(title: "Scan", detail: message)
 
             case let .discovered(name, idSuffix, rssi):
                 let candidate = ProbeCandidate(name: name, idSuffix: idSuffix, rssi: rssi)
@@ -44,8 +60,15 @@ final class ProbeViewModel: ObservableObject {
                 append(title: "Connecting", detail: name)
 
             case let .connected(name):
+                isConnected = true
                 status = "Connected to \(name)"
                 append(title: "Connected", detail: name)
+
+            case let .disconnected(message):
+                isConnected = false
+                identityConfirmedForSafeWrites = false
+                status = message
+                append(title: "Disconnected", detail: message)
 
             case let .channelReady(channel):
                 status = "BMAP channel ready"
@@ -56,8 +79,16 @@ final class ProbeViewModel: ObservableObject {
 
             case let .identity(value):
                 identity = value
+                identityConfirmedForSafeWrites = false
                 status = value.productName
                 append(title: "Identity", detail: value.productName)
+
+            case let .safeWritesConfirmed(value):
+                identityConfirmedForSafeWrites = value && canConfirmSafeWrites
+                append(
+                    title: "Safe Writes",
+                    detail: identityConfirmedForSafeWrites ? "Explicitly enabled" : "Disabled"
+                )
 
             case let .battery(value):
                 battery = value
@@ -93,7 +124,7 @@ final class ProbeViewModel: ObservableObject {
 
             case let .spatialAudio(value):
                 spatialAudioMode = value
-                append(title: "Spatial Audio", detail: String(describing: value))
+                append(title: "Spatial Audio", detail: Self.spatialTitle(value))
 
             case let .error(message):
                 status = message
@@ -123,6 +154,14 @@ final class ProbeViewModel: ObservableObject {
                 return "\(primary.percentage)% • \(remainingMinutes) min"
             }
             return "\(primary.percentage)%"
+        }
+
+        static func spatialTitle(_ mode: SpatialAudioMode) -> String {
+            switch mode {
+            case .off: "Off"
+            case .still: "Still"
+            case .motion: "Motion"
+            }
         }
     }
 

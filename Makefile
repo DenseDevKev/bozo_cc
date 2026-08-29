@@ -12,7 +12,7 @@ ULTRA_TEST_DEPLOYMENT_TARGET ?=
 ULTRA_TEST_DEPLOYMENT_OVERRIDE = $(if $(ULTRA_TEST_DEPLOYMENT_TARGET),MACOSX_DEPLOYMENT_TARGET=$(ULTRA_TEST_DEPLOYMENT_TARGET),)
 
 .PHONY: build release run scan debug test clean grant-bluetooth \
-	macos-generate macos-build macos-test macos-test-core macos-probe
+	macos-generate macos-build macos-test macos-test-core macos-probe-build macos-probe
 
 build:
 	cargo build -p bozod -p bozo
@@ -64,6 +64,14 @@ macos-test: macos-generate
 		CODE_SIGNING_ALLOWED=NO \
 		$(ULTRA_TEST_DEPLOYMENT_OVERRIDE) \
 		test
+
+macos-probe-build: macos-generate
+	xcodebuild -project $(ULTRA_PROJECT) \
+		-scheme UltraControllerProtocolProbe \
+		-configuration Debug \
+		-destination '$(ULTRA_DESTINATION)' \
+		CODE_SIGNING_ALLOWED=NO \
+		build
 
 macos-probe: macos-generate
 	xcodebuild -project $(ULTRA_PROJECT) \

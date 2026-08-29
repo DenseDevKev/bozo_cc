@@ -28,13 +28,17 @@ enum ProbePacketDirection: String, Sendable {
 }
 
 enum ProbeEvent: Sendable {
+    case scanReset
     case bluetooth(String)
+    case scanStopped(String)
     case discovered(name: String, idSuffix: String, rssi: Int)
     case connecting(String)
     case connected(String)
+    case disconnected(String)
     case channelReady(String)
     case packet(direction: ProbePacketDirection, summary: String, hex: String)
     case identity(HeadphoneIdentity)
+    case safeWritesConfirmed(Bool)
     case battery([BatteryComponent])
     case capabilities(AudioModeCapabilities)
     case modes([UInt8])
