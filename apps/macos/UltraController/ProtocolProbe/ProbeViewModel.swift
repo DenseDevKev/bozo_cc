@@ -6,7 +6,7 @@ final class ProbeViewModel: ObservableObject {
     struct State: Equatable {
         static let maximumTranscriptRows = 500
 
-        var status = "Initializing Bluetooth…"
+        var status = "Ready — press Start Scan"
         var rows: [ProbeRow] = []
         var candidates: [ProbeCandidate] = []
         var isConnected = false
