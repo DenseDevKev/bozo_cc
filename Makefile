@@ -12,7 +12,7 @@ ULTRA_TEST_DEPLOYMENT_TARGET ?=
 ULTRA_TEST_DEPLOYMENT_OVERRIDE = $(if $(ULTRA_TEST_DEPLOYMENT_TARGET),MACOSX_DEPLOYMENT_TARGET=$(ULTRA_TEST_DEPLOYMENT_TARGET),)
 
 .PHONY: build release run scan debug test clean grant-bluetooth \
-	macos-generate macos-build macos-test macos-test-core macos-probe-build macos-probe
+	macos-generate macos-build macos-test macos-test-core macos-probe-build macos-probe-verify-plist macos-probe
 
 build:
 	cargo build -p bozod -p bozo
@@ -72,6 +72,13 @@ macos-probe-build: macos-generate
 		-destination '$(ULTRA_DESTINATION)' \
 		CODE_SIGNING_ALLOWED=NO \
 		build
+
+macos-probe-verify-plist: macos-probe-build
+	@PLIST=$$(find $(HOME)/Library/Developer/Xcode/DerivedData -path '*UltraControllerProtocolProbe.app/Contents/Info.plist' -print -quit); \
+	if [ -z "$$PLIST" ]; then echo "Probe Info.plist not found"; exit 1; fi; \
+	VALUE=$$(/usr/libexec/PlistBuddy -c 'Print :NSBluetoothAlwaysUsageDescription' "$$PLIST" 2>/dev/null || true); \
+	if [ -z "$$VALUE" ]; then echo "Built probe is missing NSBluetoothAlwaysUsageDescription"; exit 1; fi; \
+	echo "Verified built probe Bluetooth usage description: $$VALUE"
 
 macos-probe: macos-generate
 	xcodebuild -project $(ULTRA_PROJECT) \
