@@ -4,25 +4,23 @@
 
 **Goal:** Validate and ship only safe advanced QC Ultra mode edits, then add WidgetKit Control Center and system-menu-bar controls through the one Bluetooth-owning main app process.
 
-**Architecture:** Gate A produces a firmware-specific verified-field profile and packet fixtures before production mutation code exists. The mode editor generates a minimal ordered mutation plan from a confirmed draft and reconciles the full device response after Apply. Gate B separately proves the WidgetKit → App Intent → main-process lifecycle; the extension renders cached state only and either reaches the existing `HeadphoneSession` or uses the approved open-app fallback.
+**Architecture:** Gate A creates an exact firmware profile and fixtures before production mutation code exists. Mode Apply uses a confirmed draft, verified field rules, ordered writes, and complete read-back reconciliation. Gate B then proves WidgetKit → App Intent → main-process behavior. Shared snapshot types move into a Foundation-only `ControlSupport` package used by app and extension; the extension never owns Bluetooth.
 
-**Tech Stack:** Swift 6, SwiftUI, WidgetKit Controls, App Intents, XCTest/XCUITest, CoreBluetooth through the existing session only, JSON validation profiles, physical QC Ultra hardware.
+**Tech Stack:** Swift 6, SwiftUI, WidgetKit Controls, App Intents, XCTest/XCUITest, JSON validation profiles, physical QC Ultra hardware.
 
 **Spec:** `docs/superpowers/specs/2026-08-29-qc-ultra-macos-controller-design.md`
 
 ## Global Constraints
 
-- Plans 1–3 must pass before this plan begins.
-- Keep QC Ultra Headphones Gen 1 as the only writable hardware profile.
-- Never expose an advanced field until Gate A proves deterministic read, write, read-back, unrelated-field preservation, and safe reversal.
-- Prefer field-specific writes. A full ModeConfig write is allowed only when the original raw payload is preserved byte-for-byte except for verified offsets.
-- Do not write firmware, pairing, reset, or arbitrary raw BMAP commands.
-- Advanced Apply is one user operation but is not represented as hardware-atomic.
-- Re-read the target mode immediately before Apply and reject stale drafts instead of blind overwrite.
-- The controls extension never imports CoreBluetooth, creates `CBCentralManager`, or encodes BMAP.
-- Power Off remains unavailable from Control Center and system-pinned controls.
-- If Gate B fails for a lifecycle state, use the documented open-app fallback or omit that action in that state; do not add XPC, a helper, or a daemon.
-- Validate Gate B again against the final macOS 27 and Xcode 27 SDK before public release.
+- Plans 1–3 must pass first.
+- QC Ultra Headphones Gen 1 is the only writable hardware family.
+- Never expose an advanced field until Gate A proves deterministic read/write/read-back, unrelated-byte preservation, and safe restoration.
+- Prefer field-specific writes. Full ModeConfig writes are allowed only when exact physical validation proves the operator/layout and all untouched bytes remain identical.
+- No firmware, pairing, reset, raw command console, XPC helper, daemon, or second BLE owner.
+- Re-read the mode immediately before Apply; stale drafts never blind-overwrite.
+- Power Off remains absent from system controls.
+- Gate B has exactly three production conclusions: `directMainProcess`, `openAppAlways`, or `controlsExcluded`.
+- Revalidate Gate B against final macOS 27/Xcode 27 before public release.
 
 ---
 
@@ -30,55 +28,52 @@
 
 | Path | Responsibility |
 |---|---|
-| `App/Diagnostics/AdvancedModeProbe/*` | Debug-only, bounded one-field-at-a-time physical validation harness. |
-| `App/Resources/VerifiedModeFieldProfile.json` | Generated/committed allowlist of fields proven safe for one device/firmware profile. |
-| `docs/protocol/qc-ultra-advanced-mode-validation.md` | Human-readable Gate A evidence, reversals, repetitions, and failures. |
-| `fixtures/bmap/advanced/*` | Sanitized request/response fixtures admitted by Gate A. |
-| `Packages/HeadphoneCore/.../ModeMutation/*` | Profile model, field changes, diffing, and packet construction. |
-| `App/Session/ModeDraft.swift` | Draft revision and user edits. |
-| `App/Session/ModeApplyResult.swift` | Complete, conflict, partial, and unknown outcomes. |
-| `App/Modes/*` | Capability/profile-driven native mode editor. |
-| `Packages/ControlSupport/*` | App/extension-safe snapshot entities, intent requests, and fallback contracts. |
-| `ControlsExtension/*` | WidgetKit controls and providers; no Bluetooth code. |
-| `App/Intents/*` | Main-process intent controller and App Intent implementations. |
-| `docs/platform/control-center-lifecycle.md` | Gate B test matrix and selected production lifecycle policy. |
+| `App/Diagnostics/AdvancedModeProbe/*` | Debug-only one-field physical validation. |
+| `App/Resources/VerifiedModeFieldProfile.json` | Exact device/firmware allowlist produced by Gate A. |
+| `docs/protocol/qc-ultra-advanced-mode-validation.md` | Gate A repetitions, diffs, restoration, and decisions. |
+| `fixtures/bmap/advanced/*` | Sanitized verified advanced fixtures. |
+| `Packages/HeadphoneCore/.../ModeMutation/*` | Pure field/profile/diff/packet planning. |
+| `App/Session/ModeDraft.swift` | Source revision/raw payload and proposed changes. |
+| `App/Session/ModeApplyResult.swift` | Complete, conflict, partial, and unknown results. |
+| `App/Modes/*` | Verified profile-driven editor. |
+| `Packages/ControlSupport/*` | Shared snapshot store/schema, control entities, requests, and lifecycle policy. |
+| `ControlsExtension/*` | WidgetKit providers/controls only. |
+| `App/Intents/*` | Main-app intent dependency and actions. |
+| `docs/platform/control-center-lifecycle.md` | Gate B matrix and selected policy. |
 
-### Task 1: Execute Gate A and create the verified advanced-field profile
+### Task 1: Execute Gate A and produce the exact verified-field profile
 
 **Files:**
-- Create: `apps/macos/UltraController/App/Diagnostics/AdvancedModeProbe/AdvancedModeProbeView.swift`
-- Create: `apps/macos/UltraController/App/Diagnostics/AdvancedModeProbe/AdvancedModeProbeModel.swift`
-- Create: `apps/macos/UltraController/App/Diagnostics/AdvancedModeProbe/AdvancedModeProbeRunner.swift`
 - Create: `apps/macos/UltraController/App/Diagnostics/AdvancedModeProbe/AdvancedFieldCandidate.swift`
+- Create: `.../AdvancedModeProbeModel.swift`
+- Create: `.../AdvancedModeProbeRunner.swift`
+- Create: `.../AdvancedModeProbeView.swift`
 - Create: `apps/macos/UltraController/App/Resources/VerifiedModeFieldProfile.json`
 - Create: `docs/protocol/qc-ultra-advanced-mode-validation.md`
-- Create as admitted: `fixtures/bmap/advanced/*.json`
+- Create only for admitted/rejection cases: `fixtures/bmap/advanced/*.json`
 - Modify: `apps/macos/UltraController/App/Settings/SettingsView.swift`
 - Test: `apps/macos/UltraController/Tests/Diagnostics/AdvancedModeProbeModelTests.swift`
 
 **Interfaces:**
-- Consumes: connected production `HeadphoneSession`, full raw `AudioMode` payloads, and Plan 2 diagnostics.
-- Produces: `VerifiedModeFieldProfile.json`, sanitized fixtures, and a pass/fail record for each candidate field.
+- Consumes: connected production session and complete raw `AudioMode` payloads.
+- Produces: one exact firmware profile and pass/reject/unsupported decision per field.
 
-- [ ] **Step 1: Define the profile schema before probing**
-
-Create an initially empty but valid profile:
+- [ ] **Step 1: Create a valid not-yet-run profile schema**
 
 ```json
 {
   "schemaVersion": 1,
   "deviceFamily": "qc-ultra-headphones-gen1",
-  "firmware": "UNVALIDATED",
+  "validationState": "notRun",
+  "firmware": null,
   "validatedAt": null,
-  "modeConfigFunction": {
-    "functionBlock": 31,
-    "function": 6
-  },
+  "modeConfigFunction": { "functionBlock": 31, "function": 6 },
+  "safeWriteOrder": [],
   "fields": {}
 }
 ```
 
-Each admitted field must use this exact shape:
+A verified field uses:
 
 ```json
 "cncLevel": {
@@ -99,141 +94,94 @@ Each admitted field must use this exact shape:
 }
 ```
 
-Rejected fields remain present with `status: "rejected"`, a concrete `reason`, and no production write strategy. Unsupported fields use `status: "unsupported"`.
+Rejected/unsupported/unvalidated fields remain in `fields` with a concrete status/reason and no production strategy.
 
-- [ ] **Step 2: Write probe-model tests**
+- [ ] **Step 2: Write probe safety tests**
 
 ```swift
-final class AdvancedModeProbeModelTests: XCTestCase {
-    func testRunnerRequiresOriginalConfigurationBeforeWrite() {
-        var model = AdvancedModeProbeModel()
-        model.select(candidate: .cncLevel)
-        XCTAssertFalse(model.canBeginValidation)
-        model.captureOriginal(.fixtureCustomMode)
-        XCTAssertTrue(model.canBeginValidation)
-    }
+func testRunnerRequiresOriginalConfiguration() {
+    var model = AdvancedModeProbeModel()
+    model.select(candidate: .cncLevel)
+    XCTAssertFalse(model.canBeginValidation)
+    model.captureOriginal(.fixtureCustomMode)
+    XCTAssertTrue(model.canBeginValidation)
+}
 
-    func testProbeNeverTargetsBoseBuiltInModeByDefault() {
-        let candidate = AudioMode.fixture(index: 0, isUserConfigurable: false)
-        XCTAssertFalse(AdvancedModeProbeRunner.isSafeTarget(candidate))
-    }
+func testBuiltInModeIsNotDefaultTarget() {
+    XCTAssertFalse(AdvancedModeProbeRunner.isSafeTarget(.fixture(index: 0, isUserConfigurable: false)))
+}
 
-    func testFailedRestorationBlocksFurtherWrites() {
-        var model = AdvancedModeProbeModel()
-        model.record(.restorationFailed(field: .windBlock))
-        XCTAssertTrue(model.isWriteLocked)
-    }
+func testRestorationFailureLocksWrites() {
+    var model = AdvancedModeProbeModel()
+    model.record(.restorationFailed(field: .windBlock))
+    XCTAssertTrue(model.isWriteLocked)
 }
 ```
 
-- [ ] **Step 3: Run tests and verify failure**
+Run `make macos-test`; expected failure until types exist.
 
-```bash
-make macos-test
-```
-
-Expected: FAIL because Gate A probe types are undefined.
-
-- [ ] **Step 4: Implement a bounded candidate set**
+- [ ] **Step 3: Implement bounded candidate set and runner**
 
 ```swift
 enum AdvancedFieldCandidate: String, CaseIterable, Codable, Sendable {
-    case modeName
-    case favorite
-    case cncLevel
-    case autoCNC
-    case windBlock
-    case spatialAudioMode
-    case ancEnabled
+    case modeName, favorite, cncLevel, autoCNC, windBlock, spatialAudioMode, ancEnabled
 }
 ```
 
-Each candidate declares its expected offset from the documented 48-byte ModeConfig layout only as a hypothesis. The runner must compare physical before/after payloads and may not mark it verified merely because the documented offset changed.
+For one disposable user-configurable mode and one field, runner:
 
-- [ ] **Step 5: Implement the debug-only validation runner**
+1. reads/stores full original payload
+2. verifies safe target and switches away if active
+3. mutates only the hypothesized field
+4. writes once, reads complete mode, computes byte diff
+5. rejects unexpected known/opaque changes
+6. restores original and confirms
+7. locks on restoration failure
+8. completes ten write/read/restore cycles
+9. completes three reconnect read checks
+10. completes two power-cycle persistence/restoration checks
 
-The runner accepts one user-configurable custom mode and one candidate field. For each candidate it:
+No free-form hex UI; `#if DEBUG` only.
 
-1. Reads and stores the complete original mode payload and parsed state.
-2. Verifies the target mode is user configurable and not the active safety-critical mode unless the user explicitly switches away.
-3. Generates exactly one candidate mutation from the original raw payload.
-4. Writes once and reads the full mode back.
-5. Computes a byte diff between original, requested, and actual payloads.
-6. Rejects the candidate if any unrelated known or opaque byte changes unexpectedly.
-7. Restores the original payload/value and reads it back.
-8. Locks all further writes if restoration cannot be confirmed.
-9. Repeats successful write/read/restore for ten cycles.
-10. Reconnects three times and repeats a read check.
-11. Power-cycles the headphones twice and records persistence behavior.
+- [ ] **Step 4: Expose hidden validation UI**
 
-The runner exposes no free-form hex input and compiles only under `#if DEBUG`.
+When diagnostics is enabled, Settings offers `Advanced Mode Validation…` with explicit warning. Display original/requested/confirmed payload diff, cycle counts, restoration state, and Stop. Require the user to select a custom mode.
 
-- [ ] **Step 6: Add the hidden probe entry point**
+- [ ] **Step 5: Execute every candidate physically**
 
-When developer diagnostics is enabled, Settings shows `Advanced Mode Validation…`. Require a warning sheet stating that the tool writes one field at a time to a custom mode and will stop on any restoration failure.
+Record firmware, capability bit, exact operator/payload/range, response, read-back, changed offsets, restoration, ten cycles, three reconnects, two power cycles. Untestable means `unvalidated`, therefore excluded.
 
-- [ ] **Step 7: Run Gate A on the physical headset**
+- [ ] **Step 6: Write evidence with one subsection per candidate**
 
-For every candidate field:
-
-- Use one disposable/custom user-configurable mode.
-- Record exact firmware and original mode payload.
-- Record write operator and payload.
-- Record device response and full read-back.
-- Complete ten write/read/restore cycles.
-- Complete three reconnect cycles.
-- Complete two headphone power cycles.
-- Confirm the original mode configuration is restored before moving to the next field.
-
-If a field cannot be safely tested, mark it `unvalidated`, which is equivalent to excluded from production.
-
-- [ ] **Step 8: Write the evidence document**
-
-Create `docs/protocol/qc-ultra-advanced-mode-validation.md`:
+`docs/protocol/qc-ultra-advanced-mode-validation.md` headings:
 
 ```markdown
 # QC Ultra Advanced Mode Validation
-
 ## Environment
-- macOS build:
-- Xcode build:
-- Headphone firmware:
-- Test mode index and original name:
-
-## Candidate results
-| Field | Capability bit | Strategy | Range/values | 10 cycles | 3 reconnects | 2 power cycles | Restored | Decision |
-
-## Byte-diff evidence
-### Field: <name>
-- Original payload:
-- Requested payload:
-- Confirmed payload:
-- Changed offsets:
-- Unrelated offsets changed:
-
-## Rejected and unsupported fields
+## Candidate result table
+## Mode name evidence
+## Favorite evidence
+## CNC level evidence
+## Auto-CNC evidence
+## Wind block evidence
+## Spatial/Immersive behavior evidence
+## ANC enabled evidence
 ## Restoration incidents
+## Rejected, unsupported, and unvalidated fields
 ## Production profile checksum
 ## Gate A conclusion
 ```
 
-Populate every section. Sanitized fixtures are added only for verified reads/writes and explicit rejection/error cases.
+Each evidence subsection records original/requested/confirmed payload, changed offsets, unrelated offsets, repetitions, and restoration.
 
-- [ ] **Step 9: Finalize the machine-readable profile**
+- [ ] **Step 7: Finalize/verify profile and commit**
 
-Replace `firmware: "UNVALIDATED"`, set `validatedAt`, and add every candidate with `verified`, `rejected`, `unsupported`, or `unvalidated`. Compute and record:
-
-```bash
-shasum -a 256 apps/macos/UltraController/App/Resources/VerifiedModeFieldProfile.json
-```
-
-Copy the checksum into the evidence document.
-
-- [ ] **Step 10: Verify and commit Gate A evidence**
+Set `validationState: "complete"`, exact firmware/time/order/rules, then:
 
 ```bash
 python3 -m json.tool apps/macos/UltraController/App/Resources/VerifiedModeFieldProfile.json >/dev/null
-! grep -E 'UNVALIDATED|TBD|TODO|REPLACE_ME' \
+shasum -a 256 apps/macos/UltraController/App/Resources/VerifiedModeFieldProfile.json
+! grep -E '"validationState": "notRun"|TBD|TODO|REPLACE_ME' \
   apps/macos/UltraController/App/Resources/VerifiedModeFieldProfile.json \
   docs/protocol/qc-ultra-advanced-mode-validation.md
 make macos-test
@@ -242,101 +190,50 @@ git add apps/macos/UltraController/App/Diagnostics/AdvancedModeProbe \
   apps/macos/UltraController/App/Resources/VerifiedModeFieldProfile.json \
   apps/macos/UltraController/App/Settings/SettingsView.swift \
   apps/macos/UltraController/Tests/Diagnostics \
-  docs/protocol/qc-ultra-advanced-mode-validation.md \
-  fixtures/bmap/advanced
+  docs/protocol/qc-ultra-advanced-mode-validation.md fixtures/bmap/advanced
 git commit -m "test: validate QC Ultra advanced mode writes"
 ```
 
-### Task 2: Implement verified mode mutation primitives
+### Task 2: Implement pure verified mutation planning
 
 **Files:**
 - Create: `apps/macos/UltraController/Packages/HeadphoneCore/Sources/HeadphoneCore/ModeMutation/VerifiedModeField.swift`
-- Create: `.../ModeMutation/VerifiedModeFieldProfile.swift`
-- Create: `.../ModeMutation/ModeFieldChange.swift`
-- Create: `.../ModeMutation/AudioModeMutationPlan.swift`
-- Create: `.../ModeMutation/AudioModeMutationPlanner.swift`
-- Create: `.../ModeMutation/ModeMutationError.swift`
-- Modify: `apps/macos/UltraController/Packages/HeadphoneCore/Sources/HeadphoneCore/Protocol/AudioModeMessages.swift`
-- Test: `apps/macos/UltraController/Packages/HeadphoneCore/Tests/HeadphoneCoreTests/AudioModeMutationPlannerTests.swift`
-- Test: `.../VerifiedModeFieldProfileTests.swift`
+- Create: `.../VerifiedModeFieldProfile.swift`
+- Create: `.../ModeFieldChange.swift`
+- Create: `.../AudioModeMutationPlan.swift`
+- Create: `.../AudioModeMutationPlanner.swift`
+- Create: `.../ModeMutationError.swift`
+- Modify: `.../Protocol/AudioModeMessages.swift`
+- Test: `.../Tests/HeadphoneCoreTests/VerifiedModeFieldProfileTests.swift`
+- Test: `.../AudioModeMutationPlannerTests.swift`
 
 **Interfaces:**
-- Consumes: confirmed `AudioMode.rawPayload`, desired field changes, and the Gate A profile.
-- Produces: `AudioModeMutationPlan` containing ordered typed packets and an expected confirmed mode; rejects unverified fields and changed opaque bytes.
+- Consumes: confirmed raw mode, desired changes, exact firmware profile.
+- Produces: ordered packets/expected payload; rejects unverified field/firmware or opaque-byte damage.
 
-- [ ] **Step 1: Write profile and mutation-planner tests**
+- [ ] **Step 1: Write tests from actual Gate A rules**
 
-Use the actual Gate A results. For each verified field, add a test asserting exact request hex and changed offsets. For each rejected/unvalidated field, add:
+Assert exact request hex and changed offsets for every verified field. Assert rejected/unvalidated fields throw `.fieldNotVerified`. Assert full-payload mutation changes only profile-listed offsets.
 
 ```swift
 func testUnverifiedFieldCannotProduceMutation() throws {
-    let profile = try VerifiedModeFieldProfile.fixtureOnlyCNCVerified()
-    XCTAssertThrowsError(
-        try AudioModeMutationPlanner(profile: profile).plan(
-            from: .fixtureCustomMode,
-            changes: [.windBlock(true)]
-        )
-    ) { error in
-        XCTAssertEqual(error as? ModeMutationError, .fieldNotVerified(.windBlock))
+    let planner = AudioModeMutationPlanner(profile: .fixtureOnlyCNCVerified)
+    XCTAssertThrowsError(try planner.plan(from: .fixtureCustomMode, changes: [.windBlock(true)])) {
+        XCTAssertEqual($0 as? ModeMutationError, .fieldNotVerified(.windBlock))
     }
 }
 ```
 
-Add an opaque-byte test:
-
-```swift
-func testFullPayloadMutationChangesOnlyVerifiedOffset() throws {
-    let plan = try planner.plan(from: .fixtureCustomMode, changes: [.cncLevel(7)])
-    let before = AudioMode.fixtureCustomMode.rawPayload
-    let after = plan.expectedRawPayload
-    XCTAssertEqual(zip(before, after).enumerated().compactMap { $0.element.0 == $0.element.1 ? nil : $0.offset }, [42])
-}
-```
-
-- [ ] **Step 2: Run and verify failure**
-
-```bash
-make macos-test-core
-```
-
-Expected: FAIL because mutation-profile types are undefined.
-
-- [ ] **Step 3: Implement profile decoding with firmware matching**
+- [ ] **Step 2: Implement profile and change types**
 
 ```swift
 public enum VerifiedModeField: String, Codable, Sendable, CaseIterable {
     case modeName, favorite, cncLevel, autoCNC, windBlock, spatialAudioMode, ancEnabled
 }
 
-public struct VerifiedModeFieldProfile: Codable, Sendable, Equatable {
-    public let schemaVersion: Int
-    public let deviceFamily: String
-    public let firmware: String
-    public let fields: [VerifiedModeField: FieldRule]
-
-    public func rule(for field: VerifiedModeField, firmware actual: String) throws -> FieldRule {
-        guard actual == firmware else { throw ModeMutationError.unvalidatedFirmware(actual) }
-        guard let rule = fields[field], rule.status == .verified else {
-            throw ModeMutationError.fieldNotVerified(field)
-        }
-        return rule
-    }
-}
-```
-
-Do not silently apply a profile to a different firmware. The app may later admit a second exact profile through a separate physical validation commit.
-
-- [ ] **Step 4: Implement changes and planner**
-
-```swift
 public enum ModeFieldChange: Sendable, Equatable {
-    case modeName(String)
-    case favorite(Bool)
-    case cncLevel(UInt8)
-    case autoCNC(Bool)
-    case windBlock(Bool)
-    case spatialAudioMode(SpatialAudioMode)
-    case ancEnabled(Bool)
+    case modeName(String), favorite(Bool), cncLevel(UInt8), autoCNC(Bool)
+    case windBlock(Bool), spatialAudioMode(SpatialAudioMode), ancEnabled(Bool)
 }
 
 public struct AudioModeMutationPlan: Sendable, Equatable {
@@ -348,47 +245,34 @@ public struct AudioModeMutationPlan: Sendable, Equatable {
 }
 ```
 
-The planner:
+Profile loading requires schema/device family/exact firmware/complete validation. Planner validates values/names, uses `safeWriteOrder`, preserves all other bytes, and emits only physically verified strategies.
 
-- sorts changes by the exact safe order recorded in the profile
-- validates ranges/allowed values
-- validates UTF-8 byte length and zero padding for names
-- preserves all unmodified bytes
-- emits field-specific packets when the profile says `fieldSpecific`
-- emits one verified full-payload `SetGet` packet only when the profile says `fullModeConfigSetGet`
-- rejects duplicate fields, unknown profile schema, mismatched firmware, and payloads with unexpected length
+- [ ] **Step 3: Implement exact write builder only from Gate A**
 
-- [ ] **Step 5: Add `AudioModeMessages.setConfiguration` only when Gate A verified it**
-
-The builder accepts the full already-validated payload and does not modify it internally:
+When Gate A verified full ModeConfig SetGet:
 
 ```swift
-public static func setConfiguration(validatedPayload: [UInt8]) throws -> BMAPPacket {
-    guard validatedPayload.count == 48 else {
+public static func setConfiguration(validatedPayload: [UInt8], expectedLength: Int) throws -> BMAPPacket {
+    guard validatedPayload.count == expectedLength else {
         throw ModeMutationError.unexpectedPayloadLength(validatedPayload.count)
     }
-    return BMAPPacket(
-        functionBlock: .audioModes,
-        function: 0x06,
-        operator: .setGet,
-        payload: validatedPayload
-    )
+    return BMAPPacket(functionBlock: .audioModes, function: 0x06,
+                      operator: .setGet, payload: validatedPayload)
 }
 ```
 
-If Gate A discovers a different operator/layout, encode the exact verified contract and update the test fixture; do not keep this hypothetical signature unmodified.
+If physical evidence says another operator/function/layout, encode that exact result instead and assert fixture bytes.
 
-- [ ] **Step 6: Run parity tests and commit**
+- [ ] **Step 4: Run parity tests and commit**
 
 ```bash
 make macos-test-core
 cargo test --workspace
-
 git add apps/macos/UltraController/Packages/HeadphoneCore fixtures/bmap/advanced
 git commit -m "feat: add verified mode mutation planner"
 ```
 
-### Task 3: Add draft conflict detection and verified multi-field Apply
+### Task 3: Implement source-revision conflict detection and multi-field Apply
 
 **Files:**
 - Create: `apps/macos/UltraController/App/Session/ModeDraft.swift`
@@ -402,49 +286,13 @@ git commit -m "feat: add verified mode mutation planner"
 - Test: `apps/macos/UltraController/Tests/Application/ModeDraftApplicationTests.swift`
 
 **Interfaces:**
-- Consumes: profile-backed `AudioModeMutationPlanner`, confirmed mode, session revision, and connected firmware identity.
-- Produces: `makeModeDraft(id:)`, `applyModeDraft(_:)`, conflict handling, complete/partial/unknown results, and refreshed authoritative state.
+- Produces: `makeModeDraft(id:)`, `applyModeDraft(_:)`, complete/partial/conflict/unknown results, refreshed authoritative state.
 
-- [ ] **Step 1: Write stale-draft and partial-apply tests**
+- [ ] **Step 1: Write stale/partial tests**
 
-```swift
-func testApplyRejectsDraftWhenModeChangedExternally() async throws {
-    let fixture = try await SessionFixture.connectedWithVerifiedProfile()
-    let draft = try await fixture.session.makeModeDraft(id: 2)
-    fixture.respondModeConfig(.fixtureCustomMode.withCNC(4))
-    await fixture.session.ingestExternalRefreshForTest()
+A stale mode payload produces `.conflict` with zero mutating writes. Script a first-field success/second-field error and assert `.partial(confirmed:failedFields:)` contains actual read-back.
 
-    await XCTAssertThrowsErrorAsync(
-        try await fixture.session.applyModeDraft(draft.changing(.cncLevel(7))),
-        matching: .conflict
-    )
-    XCTAssertEqual(fixture.transport.mutatingWriteCount, 0)
-}
-
-func testPartialApplyReturnsConfirmedFinalMode() async throws {
-    let fixture = try await SessionFixture.connectedWithVerifiedProfile()
-    let draft = try await fixture.session.makeModeDraft(id: 2)
-    fixture.scriptFirstFieldSuccessSecondFieldError()
-    let result = try await fixture.session.applyModeDraft(
-        draft.changing(.cncLevel(7)).changing(.favorite(true))
-    )
-    guard case let .partial(confirmedMode, failedFields) = result else {
-        return XCTFail("expected partial result")
-    }
-    XCTAssertEqual(confirmedMode.cncLevel, 7)
-    XCTAssertEqual(failedFields, [.favorite])
-}
-```
-
-- [ ] **Step 2: Run and verify failure**
-
-```bash
-make macos-test
-```
-
-Expected: FAIL because draft/apply types are undefined.
-
-- [ ] **Step 3: Define draft and outcomes**
+- [ ] **Step 2: Define draft/outcome**
 
 ```swift
 struct ModeDraft: Equatable, Sendable {
@@ -453,174 +301,91 @@ struct ModeDraft: Equatable, Sendable {
     let sourceRawPayload: [UInt8]
     let sourceMode: AudioMode
     var changes: [VerifiedModeField: ModeFieldChange]
+
+    func changing(_ change: ModeFieldChange) -> ModeDraft
 }
 
 enum ModeApplyResult: Equatable, Sendable {
+    case unchanged(AudioMode)
     case complete(AudioMode)
     case partial(confirmed: AudioMode, failedFields: [VerifiedModeField])
-    case unchanged(AudioMode)
 }
 ```
 
-The application model owns the editable copy, but only the session may construct a valid source draft from confirmed state.
+Implement `changing(_:)` by replacing the field's previous change and returning a copy.
 
-- [ ] **Step 4: Implement preflight conflict detection**
+- [ ] **Step 3: Implement preflight and Apply**
 
-Immediately before writing:
+Immediately GET full ModeConfig. If source raw payload differs, throw conflict before writes. Otherwise build exact-firmware plan, serialize through command queue, stop after first failure, always GET full final configuration, publish it, and return complete/partial. If final GET fails, throw `.outcomeUnknown` and mark stale. No v1 rollback unless a later separately tested path is explicitly enabled.
 
-1. Query the complete current ModeConfig.
-2. Compare mode ID, raw payload, and source revision.
-3. If unchanged, continue.
-4. If only unrelated global session state changed but mode payload matches, update draft revision and continue.
-5. If mode payload changed, throw `ModeApplyError.conflict(ModeConflict)` with the latest confirmed mode and no writes.
+- [ ] **Step 4: Update ApplicationModel**
 
-Do not provide a blind force-overwrite API. The UI can reload and create a new draft from latest state.
+Add begin/update/apply/discard. Preserve proposed values on conflict separately from confirmed latest state; expose Reload and Review Changes, never Force Overwrite.
 
-- [ ] **Step 5: Implement ordered Apply and reconciliation**
-
-- Build the plan with the connected firmware's verified profile.
-- Serialize the operation through the existing command queue.
-- Write packets in profile order.
-- Stop after the first failed field/packet.
-- Query the full mode configuration regardless of complete or partial write outcome.
-- Compare every intended field and unknown-byte preservation.
-- Publish the confirmed mode to the session snapshot.
-- Return `.complete`, `.partial`, or throw `.outcomeUnknown` when final state cannot be read.
-- Do not perform rollback unless Gate A explicitly marked every changed field reversible and a separately tested rollback path is enabled; v1 default is reconciliation, not speculative rollback.
-
-- [ ] **Step 6: Update `ApplicationModel` draft behavior**
-
-Expose:
-
-```swift
-func beginEditingMode(_ id: UInt8)
-func updateModeDraft(_ change: ModeFieldChange)
-func applyModeDraft()
-func discardModeDraft()
-```
-
-On conflict, preserve the user's proposed field values separately and show latest confirmed values. Provide `Reload` and `Review Changes`; creating a new draft requires an explicit user action.
-
-- [ ] **Step 7: Run tests and commit**
+- [ ] **Step 5: Run/commit**
 
 ```bash
 make macos-test
-
-git add apps/macos/UltraController/App/Session \
-  apps/macos/UltraController/App/Application \
-  apps/macos/UltraController/Tests/Session \
-  apps/macos/UltraController/Tests/Application
+git add apps/macos/UltraController/App/Session apps/macos/UltraController/App/Application apps/macos/UltraController/Tests/Session apps/macos/UltraController/Tests/Application
 git commit -m "feat: add verified advanced mode apply"
 ```
 
-### Task 4: Build the native advanced mode editor
+### Task 4: Build the native profile-driven mode editor
 
 **Files:**
 - Replace: `apps/macos/UltraController/App/Modes/ModesListView.swift`
 - Create: `apps/macos/UltraController/App/Modes/ModeEditorView.swift`
-- Create: `apps/macos/UltraController/App/Modes/ModeFieldEditor.swift`
-- Create: `apps/macos/UltraController/App/Modes/ModeEditPresentation.swift`
-- Create: `apps/macos/UltraController/App/Modes/ModeApplyResultView.swift`
-- Create: `apps/macos/UltraController/App/Modes/ModeConflictView.swift`
+- Create: `.../ModeFieldEditor.swift`
+- Create: `.../ModeEditPresentation.swift`
+- Create: `.../ModeApplyResultView.swift`
+- Create: `.../ModeConflictView.swift`
 - Modify: `apps/macos/UltraController/App/Resources/Localizable.xcstrings`
 - Test: `apps/macos/UltraController/Tests/Modes/ModeEditPresentationTests.swift`
 - UI Test: `apps/macos/UltraController/UITests/ModeEditorUITests.swift`
 
 **Interfaces:**
-- Consumes: `ApplicationModel.modeDraft`, verified profile rules, and apply results.
-- Produces: capability/profile-driven editor with Apply/Cancel, conflict, partial-result, and accessibility behavior.
+- Consumes: application draft/profile/apply result.
+- Produces: native controls only for verified fields.
 
-- [ ] **Step 1: Write presentation tests from the actual profile**
+- [ ] **Step 1: Write profile visibility/Apply-state tests**
 
-```swift
-func testEditorShowsOnlyVerifiedWritableFields() throws {
-    let presentation = ModeEditPresentation(
-        mode: .fixtureCustomMode,
-        profile: .fixtureOnlyCNCAndFavoriteVerified,
-        firmware: "1.6.7"
-    )
-    XCTAssertEqual(presentation.fields.map(\.field), [.favorite, .cncLevel])
-}
+Use actual Gate A profile. Assert only verified writable fields appear; unchanged, invalid, disconnected, or pending draft cannot Apply.
 
-func testApplyDisabledForUnchangedDraft() {
-    XCTAssertFalse(ModeEditPresentation.unchanged.canApply)
-}
+- [ ] **Step 2: Implement controls**
 
-func testApplyDisabledDuringPendingOperation() {
-    XCTAssertFalse(ModeEditPresentation.changedPending.canApply)
-}
-```
+Name uses verified UTF-8 byte limit; booleans use Toggle; CNC uses integer Slider/Stepper or Picker; spatial uses allowed-value Picker; read-only values use `LabeledContent`. Rejected/unvalidated/mismatched-firmware fields are absent.
 
-Use the actual verified field list after Gate A instead of the fixture names when implementing production expectations.
+- [ ] **Step 3: Implement unsaved/conflict/partial UX**
 
-- [ ] **Step 2: Run and verify failure**
+Leaving changed draft offers Apply/Discard/Cancel. Conflict compares latest/proposed and offers Reload/Review/Cancel. Partial result names failed fields and shows confirmed final values. Announce apply start/result and maintain keyboard focus.
 
-```bash
-make macos-test
-```
+- [ ] **Step 4: Run tests, physical smoke test, commit**
 
-Expected: FAIL because edit presentation/views are undefined.
-
-- [ ] **Step 3: Implement field-specific native controls**
-
-- Name: `TextField` with verified UTF-8 byte-length counter and validation.
-- Favorite/Auto-CNC/Wind/ANC: `Toggle` only when verified.
-- CNC: `Slider` plus `Stepper` or `Picker` using verified integer bounds.
-- Spatial/Immersive behavior: `Picker` using verified allowed values.
-- Read-only fields: `LabeledContent`, not disabled interactive controls.
-
-Unsupported, rejected, unvalidated-firmware, and absent profile fields are omitted.
-
-- [ ] **Step 4: Implement staged navigation and unsaved-change handling**
-
-Selecting a mode creates a draft. Leaving with changes presents `Apply`, `Discard`, and `Cancel`. `Apply` remains disabled until the draft differs from the source, validates locally, the session is connected, and no command is pending.
-
-- [ ] **Step 5: Implement conflict and partial-result UI**
-
-Conflict sheet shows:
-
-- latest confirmed value for each changed field
-- proposed value
-- `Reload from Headphones`
-- `Review Changes`
-- `Cancel`
-
-Partial result shows confirmed applied values and names the failed/unconfirmed fields. Never show a generic success checkmark after partial application.
-
-- [ ] **Step 6: Add accessibility behavior**
-
-- Announce Apply start/completion/failure.
-- Expose slider values as integer ANC/CNC levels.
-- Keep focus in the error/conflict sheet after a failed Apply.
-- Do not communicate favorite/active/pending states only by icon color.
-
-- [ ] **Step 7: Run tests, perform physical editor smoke test, and commit**
+Change each admitted field once, confirm, reconnect, restore original.
 
 ```bash
 make macos-test
 xcodebuild -project apps/macos/UltraController/UltraController.xcodeproj \
   -scheme UltraController -destination 'platform=macOS,arch=arm64' test
-
-git add apps/macos/UltraController/App/Modes \
-  apps/macos/UltraController/App/Resources/Localizable.xcstrings \
-  apps/macos/UltraController/Tests/Modes \
-  apps/macos/UltraController/UITests
+git add apps/macos/UltraController/App/Modes apps/macos/UltraController/App/Resources/Localizable.xcstrings apps/macos/UltraController/Tests/Modes apps/macos/UltraController/UITests
 git commit -m "feat: add verified advanced mode editor"
 ```
 
-The physical smoke test changes every admitted field once, confirms read-back in the app and after reconnect, then restores the original mode.
-
-### Task 5: Execute Gate B with the smallest possible control extension
+### Task 5: Move shared control support into one package and execute Gate B
 
 **Files:**
 - Modify: `apps/macos/UltraController/project.yml`
 - Create: `apps/macos/UltraController/Config/Controls.entitlements`
 - Create: `apps/macos/UltraController/Packages/ControlSupport/Package.swift`
-- Create: `apps/macos/UltraController/Packages/ControlSupport/Sources/ControlSupport/ControlActionRequest.swift`
-- Create: `.../SharedHeadphoneSnapshot.swift` or move the existing shared schema into this package
+- Move: `apps/macos/UltraController/App/Application/SharedHeadphoneSnapshot.swift` → `apps/macos/UltraController/Packages/ControlSupport/Sources/ControlSupport/SharedHeadphoneSnapshot.swift`
+- Move: `apps/macos/UltraController/App/Application/SharedSnapshotStore.swift` → `apps/macos/UltraController/Packages/ControlSupport/Sources/ControlSupport/SharedSnapshotStore.swift`
+- Create: `.../ControlActionRequest.swift`
+- Create: `.../ControlActionRequestStore.swift`
 - Create: `.../ControlLifecyclePolicy.swift`
+- Modify imports: `App/Application/ApplicationModel.swift`, `App/Application/AppEnvironment.swift`
 - Create: `apps/macos/UltraController/App/Intents/HeadphoneIntentController.swift`
 - Create: `apps/macos/UltraController/App/Intents/ReconnectHeadphonesIntent.swift`
+- Create: `apps/macos/UltraController/App/Intents/ReconnectOpenAppIntent.swift`
 - Create: `apps/macos/UltraController/ControlsExtension/UltraControllerControlsBundle.swift`
 - Create: `apps/macos/UltraController/ControlsExtension/ReconnectControl.swift`
 - Create: `docs/platform/control-center-lifecycle.md`
@@ -628,281 +393,136 @@ The physical smoke test changes every admitted field once, confirms read-back in
 - Test: `apps/macos/UltraController/Tests/Intents/ReconnectHeadphonesIntentTests.swift`
 
 **Interfaces:**
-- Consumes: shared snapshot, one app `HeadphoneSessionClient`, final/current macOS 27 SDK behavior.
-- Produces: measured lifecycle policy `.directMainProcess`, `.openAppWhenNotResident`, or `.openAppAlways` and one non-destructive Reconnect control.
+- Consumes: one shared App Group and main-app session client.
+- Produces: exactly one shared schema/store and measured policy `directMainProcess`, `openAppAlways`, or `controlsExcluded`.
 
-- [ ] **Step 1: Write lifecycle-policy tests**
+- [ ] **Step 1: Create ControlSupport package and physically move shared files**
 
-```swift
-func testDirectPolicyUsesMainProcessWhenResident() {
-    let policy = ControlLifecyclePolicy.directMainProcess
-    XCTAssertEqual(policy.route(appState: .residentConnected), .executeInMainProcess)
-}
+Foundation-only package; no CoreBluetooth. Add ControlSupport dependency to app and extension in `project.yml`, remove old app files in same commit, update imports, and prove one declaration:
 
-func testFallbackPolicyOpensAppWhenTerminated() {
-    let policy = ControlLifecyclePolicy.openAppWhenNotResident
-    XCTAssertEqual(policy.route(appState: .terminated), .openApp(request: .reconnect))
-}
+```bash
+test "$(grep -R 'struct SharedHeadphoneSnapshot' apps/macos/UltraController --include='*.swift' | wc -l | tr -d ' ')" = "1"
 ```
 
-- [ ] **Step 2: Add the package and extension target**
+- [ ] **Step 2: Add extension target/entitlements**
 
-`ControlSupport` contains only Foundation/AppIntents-safe shared values and no CoreBluetooth dependency. Add to `project.yml`:
+Extension bundle ID `dev.densedevkev.ultracontroller.controls`; entitlements: sandbox + App Group only. Embed in app. Set `APPLICATION_EXTENSION_API_ONLY = YES` for extension target.
 
-```yaml
-packages:
-  HeadphoneCore:
-    path: Packages/HeadphoneCore
-  ControlSupport:
-    path: Packages/ControlSupport
-
-targets:
-  UltraControllerControls:
-    type: app-extension
-    platform: macOS
-    sources:
-      - ControlsExtension
-    entitlements:
-      path: Config/Controls.entitlements
-    dependencies:
-      - package: ControlSupport
-    settings:
-      base:
-        PRODUCT_BUNDLE_IDENTIFIER: dev.densedevkev.ultracontroller.controls
-        INFOPLIST_KEY_NSExtension_NSExtensionPointIdentifier: com.apple.widgetkit-extension
-```
-
-Embed the extension in `UltraController`. `Controls.entitlements` contains App Sandbox and the App Group only—no Bluetooth entitlement.
-
-- [ ] **Step 3: Implement the main-process controller dependency**
+- [ ] **Step 3: Implement main-app dependency and minimal direct intent**
 
 ```swift
 @MainActor
 final class HeadphoneIntentController {
     private let session: any HeadphoneSessionClient
-
-    init(session: any HeadphoneSessionClient) {
-        self.session = session
-    }
-
-    func reconnect() async throws {
-        await session.manualReconnect()
-    }
+    init(session: any HeadphoneSessionClient) { self.session = session }
+    func reconnect() async { await session.manualReconnect() }
 }
 ```
 
-Register the single app instance during environment construction:
+Register once with `AppDependencyManager.shared.add(dependency:)`.
 
-```swift
-AppDependencyManager.shared.add(dependency: environment.intentController)
-```
-
-- [ ] **Step 4: Implement the smallest App Intent**
-
-Against the final SDK's exact public signature, use main-process targeting:
+Against final SDK:
 
 ```swift
 struct ReconnectHeadphonesIntent: AppIntent {
     static let title: LocalizedStringResource = "Reconnect Headphones"
     static let openAppWhenRun = false
     static var allowedExecutionTargets: IntentExecutionTargets { [.main] }
-
     @Dependency private var controller: HeadphoneIntentController
 
     func perform() async throws -> some IntentResult & ProvidesDialog {
-        try await controller.reconnect()
+        await controller.reconnect()
         return .result(dialog: "Reconnect started.")
     }
 }
 ```
 
-If the final SDK renames the execution-target declaration, update this exact code to the final public API and record the difference in the Gate B document. Do not use private APIs to preserve the beta spelling.
+If final public spelling differs, use exact final API and document it.
 
-- [ ] **Step 5: Implement one static Reconnect control**
+- [ ] **Step 4: Implement explicit open-app fallback intent**
 
-```swift
-struct ReconnectControl: ControlWidget {
-    static let kind = "dev.densedevkev.ultracontroller.reconnect"
+`ReconnectOpenAppIntent` has `openAppWhenRun = true`, writes a `ControlActionRequest(kind:.reconnect, createdAt:.now, expiresAt:+30s, id:UUID())` into App Group before returning. Main app consumes each ID once at launch/activation, deletes expired/consumed requests, starts bounded reconnect, and navigates Overview. No dynamic process-residency guess.
 
-    var body: some ControlWidgetConfiguration {
-        StaticControlConfiguration(kind: Self.kind, provider: Provider()) { value in
-            ControlWidgetButton(action: ReconnectHeadphonesIntent()) {
-                Label(value.title, systemImage: "arrow.clockwise")
-            }
-        }
-        .displayName("Reconnect Headphones")
-        .description("Reconnect the selected QC Ultra headphones.")
-    }
-}
-```
+- [ ] **Step 5: Implement one Reconnect control and build tests**
 
-The provider reads only `SharedSnapshotStore`; it never imports CoreBluetooth or `HeadphoneCore` transport code.
+Use `StaticControlConfiguration`/`ControlWidgetButton`, provider reads shared snapshot only. Build/sign embedded extension. Test direct intent with injected controller and fallback request expiry/one-time consumption.
 
-- [ ] **Step 6: Run automated extension and intent tests**
+- [ ] **Step 6: Execute Gate B matrix**
 
-```bash
-make macos-generate
-make macos-test
-xcodebuild -project apps/macos/UltraController/UltraController.xcodeproj \
-  -scheme UltraController \
-  -destination 'platform=macOS,arch=arm64' \
-  build
-```
+Test visible, windowless, app-menu-bar-only, terminated, disconnected, unavailable, post-sleep, and stale snapshot. Diagnostics prove one central/session. Record process launch, window behavior, action result, reload, and duplicate owner.
 
-Expected: app and embedded extension build and sign with matching App Group identities.
+- [ ] **Step 7: Select one policy and write evidence**
 
-- [ ] **Step 7: Execute the Gate B lifecycle matrix**
-
-Install the development build, add Reconnect to Control Center and—where supported—the system menu bar, then test:
-
-| State | Required observation |
-|---|---|
-| Main window visible, connected | Intent runs through existing session; no second connection. |
-| Main window closed, app resident | Intent runs without opening a normal window unless the system requires it. |
-| App menu-bar-only/accessory | Intent reaches the same session. |
-| App terminated | Record whether macOS launches the main process and whether bounded BLE work completes. |
-| Headphones available but disconnected | One bounded reconnect starts; result is finite. |
-| Headphones unavailable | Clear failure/open-app recovery; no scan loop. |
-| After sleep/wake | No duplicate process/session; control state refreshes. |
-| Stale shared snapshot | Provider visibly treats state as stale. |
-
-Use Console/diagnostic session IDs to prove one `HeadphoneSession` and one central manager.
-
-- [ ] **Step 8: Write the Gate B evidence and select the policy**
-
-Create `docs/platform/control-center-lifecycle.md`:
+`docs/platform/control-center-lifecycle.md` headings:
 
 ```markdown
 # Control Center Lifecycle Validation
-
 ## Environment
-- macOS build:
-- Xcode build:
-- SDK version:
-
 ## Test matrix
-| App state | Headphone state | Process launched | Existing session reused | Action result | UI shown | Duplicate BLE owner |
-
-## API behavior observed
+## Final public APIs used
+## directMainProcess observations
+## openAppAlways observations
 ## Selected production policy
 ## Unsupported lifecycle states
-## Open-app fallback behavior
 ## Gate B conclusion
 ```
 
-Select exactly one policy:
+- `directMainProcess`: required states reliable.
+- `openAppAlways`: direct is unreliable in any required state; every control uses open-app request flow.
+- `controlsExcluded`: neither finite policy is reliable; remove extension from v1.
 
-- `directMainProcess`: all required lifecycle states work reliably.
-- `openAppWhenNotResident`: resident execution works; terminated state opens the app with the queued action.
-- `openAppAlways`: direct headless execution is unreliable; controls open the app for every action.
+No hybrid “when resident” policy based on stale cache/process guessing.
 
-If no finite/recoverable policy works within sandbox constraints, remove the extension from v1 and record Gate B as failed.
-
-- [ ] **Step 9: Commit Gate B**
+- [ ] **Step 8: Commit Gate B**
 
 ```bash
 ! grep -E 'TBD|TODO|REPLACE_ME' docs/platform/control-center-lifecycle.md
 make macos-test
-
-git add apps/macos/UltraController/project.yml \
-  apps/macos/UltraController/Config/Controls.entitlements \
-  apps/macos/UltraController/Packages/ControlSupport \
-  apps/macos/UltraController/App/Intents \
-  apps/macos/UltraController/ControlsExtension \
-  apps/macos/UltraController/Tests/Intents \
-  docs/platform/control-center-lifecycle.md
+git add apps/macos/UltraController/project.yml apps/macos/UltraController/Config/Controls.entitlements apps/macos/UltraController/Packages/ControlSupport apps/macos/UltraController/App/Application apps/macos/UltraController/App/Intents apps/macos/UltraController/ControlsExtension apps/macos/UltraController/Tests/Intents docs/platform/control-center-lifecycle.md
 git commit -m "test: validate Control Center main-process lifecycle"
 ```
 
-### Task 6: Implement production audio-mode, cycle, immersive, and reconnect controls
+### Task 6: Implement production Set/Cycle/Immersive/Reconnect controls
 
 **Files:**
-- Create: `apps/macos/UltraController/Packages/ControlSupport/Sources/ControlSupport/AudioModeEntity.swift`
+- Create: `Packages/ControlSupport/Sources/ControlSupport/AudioModeEntity.swift`
 - Create: `.../AudioModeEntityQuery.swift`
 - Create: `.../ControlOutcome.swift`
-- Create: `apps/macos/UltraController/App/Intents/SetAudioModeIntent.swift`
-- Create: `apps/macos/UltraController/App/Intents/CycleAudioModeIntent.swift`
-- Create: `apps/macos/UltraController/App/Intents/SetImmersiveAudioIntent.swift`
-- Modify: `apps/macos/UltraController/App/Intents/ReconnectHeadphonesIntent.swift`
-- Modify: `apps/macos/UltraController/App/Intents/HeadphoneIntentController.swift`
-- Create: `apps/macos/UltraController/ControlsExtension/AudioModeControl.swift`
-- Create: `apps/macos/UltraController/ControlsExtension/CycleAudioModeControl.swift`
-- Create: `apps/macos/UltraController/ControlsExtension/ImmersiveAudioControl.swift`
-- Modify: `apps/macos/UltraController/ControlsExtension/UltraControllerControlsBundle.swift`
-- Modify: `apps/macos/UltraController/App/Resources/Localizable.xcstrings`
-- Test: `apps/macos/UltraController/Packages/ControlSupport/Tests/ControlSupportTests/AudioModeEntityQueryTests.swift`
-- Test: `apps/macos/UltraController/Tests/Intents/SystemControlIntentTests.swift`
-- UI/manual: `apps/macos/UltraController/UITests/SystemControlsUITests.swift`
+- Create: `App/Intents/SetAudioModeIntent.swift`
+- Create: `App/Intents/CycleAudioModeIntent.swift`
+- Create: `App/Intents/SetImmersiveAudioIntent.swift`
+- Modify: `App/Intents/HeadphoneIntentController.swift`
+- Create: `ControlsExtension/AudioModeControl.swift`
+- Create: `ControlsExtension/CycleAudioModeControl.swift`
+- Create: `ControlsExtension/ImmersiveAudioControl.swift`
+- Modify: `ControlsExtension/UltraControllerControlsBundle.swift`
+- Modify: `App/Resources/Localizable.xcstrings`
+- Test: `Packages/ControlSupport/Tests/ControlSupportTests/AudioModeEntityQueryTests.swift`
+- Test: `Tests/Intents/SystemControlIntentTests.swift`
 
 **Interfaces:**
-- Consumes: Gate B policy, shared snapshot, and main app `HeadphoneSessionClient`.
-- Produces: configurable Set Audio Mode, deterministic Cycle Audio Mode, Immersive Audio toggle, and Reconnect controls.
+- Consumes: selected Gate B policy/shared snapshot/main session.
+- Produces: Set Mode, Cycle, Immersive toggle, Reconnect; no Power Off.
 
-- [ ] **Step 1: Write entity and cycle-order tests**
+- [ ] **Step 1: Write stable-ID/order/toggle tests**
 
-```swift
-func testModeEntityUsesStableDeviceIndex() {
-    let entity = AudioModeEntity(id: 3, name: "Music")
-    XCTAssertEqual(entity.id, 3)
-}
+Mode entities use device index IDs, cycle uses reported order/wrap, stale configured ID errors instead of name matching, and immersive On restores last confirmed non-off mode.
 
-func testCycleUsesHeadphoneReportedOrder() {
-    let modes = [AudioModeEntity(id: 0, name: "Quiet"), AudioModeEntity(id: 4, name: "Aware"), AudioModeEntity(id: 2, name: "Music")]
-    XCTAssertEqual(CycleAudioModeIntent.nextMode(after: 4, in: modes)?.id, 2)
-    XCTAssertEqual(CycleAudioModeIntent.nextMode(after: 2, in: modes)?.id, 0)
-}
-```
+- [ ] **Step 2: Implement entities and controller actions**
 
-- [ ] **Step 2: Implement dynamic mode entities from the shared snapshot**
+`AudioModeEntityQuery` reads App Group modes. Controller obtains current snapshot from session, sets mode, cycles reported order, toggles spatial using last confirmed non-off value, and reconnects. Success returns only after existing session confirmation.
 
-`AudioModeEntityQuery` reads fresh or stale cached modes from the App Group. It returns stable device mode indexes as IDs. If a configured ID no longer exists, the intent returns a localized stale-configuration result and opens the app according to Gate B policy; it never guesses by mode name.
+- [ ] **Step 3: Implement intents according to one selected policy**
 
-- [ ] **Step 3: Extend the intent controller with verified actions**
+For `directMainProcess`, use main-target intents. For `openAppAlways`, each intent writes an expiring request and opens app; app consumes once. For `controlsExcluded`, do not implement/ship this task and record scope removal. Never silently mix policies.
 
-```swift
-@MainActor
-func setMode(_ id: UInt8) async throws { try await session.setCurrentMode(id) }
+- [ ] **Step 4: Implement WidgetKit controls**
 
-@MainActor
-func cycleMode() async throws {
-    let snapshot = latestConfirmedSnapshot
-    guard let current = snapshot.currentModeID,
-          let next = nextReportedMode(after: current, in: snapshot.modes) else {
-        throw IntentControllerError.noModes
-    }
-    try await session.setCurrentMode(next.id)
-}
+Set Mode uses `AppIntentControlConfiguration` with entity parameter. Cycle/Reconnect use buttons. Immersive uses toggle. Providers show cached/stale/disconnected state honestly and import only ControlSupport/WidgetKit/AppIntents.
 
-@MainActor
-func setImmersive(enabled: Bool) async throws {
-    let target: SpatialAudioMode = enabled ? lastConfirmedNonOffSpatialMode ?? .still : .off
-    try await session.setSpatialAudio(target)
-}
-```
+- [ ] **Step 5: Reload controls after confirmed shared snapshot**
 
-The app persists the last confirmed non-off spatial mode only to define toggle-on behavior; the headphones remain authoritative.
-
-- [ ] **Step 4: Implement App Intents with Gate B routing**
-
-- `SetAudioModeIntent` accepts `AudioModeEntity`.
-- `CycleAudioModeIntent` has no parameter.
-- `SetImmersiveAudioIntent` accepts `Bool` or follows the control's toggle state.
-- `ReconnectHeadphonesIntent` remains non-destructive.
-
-For `.openAppWhenNotResident` or `.openAppAlways`, encode a small `ControlActionRequest` in the App Group, use the public open-app/deep-link path, and have the main app consume it exactly once after session startup. Expire queued requests after 30 seconds and never replay them after a later launch.
-
-- [ ] **Step 5: Implement the controls**
-
-- Set Audio Mode uses `AppIntentControlConfiguration` with an `AudioModeEntity` configuration parameter.
-- Cycle Mode uses `StaticControlConfiguration` and `ControlWidgetButton`.
-- Immersive uses `ControlWidgetToggle`, reads cached state, and invokes `SetImmersiveAudioIntent`.
-- Reconnect remains a button.
-
-Providers display disconnected/stale state honestly and do not promise success before intent completion.
-
-- [ ] **Step 6: Reload control state after confirmed changes**
-
-After `ApplicationModel` writes a fresh shared snapshot, request local control reload using the final public WidgetKit API. For the current SDK this is expected to be:
+Use final public WidgetKit reload API; expected current spelling:
 
 ```swift
 ControlCenter.shared.reloadControls(ofKind: AudioModeControl.kind)
@@ -911,62 +531,39 @@ ControlCenter.shared.reloadControls(ofKind: ImmersiveAudioControl.kind)
 ControlCenter.shared.reloadControls(ofKind: ReconnectControl.kind)
 ```
 
-Compile against the final SDK and update this exact call if Apple changed the public spelling; record the API used in `control-center-lifecycle.md`.
+Record exact final API in Gate B evidence.
 
-- [ ] **Step 7: Add intent tests for every state**
+- [ ] **Step 6: Run automated/physical tests and commit**
 
-Cover:
-
-- connected success after session read-back
-- disconnected but available bounded reconnect
-- unavailable finite failure
-- stale configured mode ID
-- missing selected device
-- Gate B open-app request creation/expiry/one-time consumption
-- immersive toggle restores the last confirmed non-off value
-- cycle preserves the reported mode order
-- no Power Off intent exists
-
-- [ ] **Step 8: Perform physical system-control tests and commit**
-
-Test each control from Control Center and, where the OS allows, pinned to the system menu bar in every Gate B-supported lifecycle state. Confirm actions update desktop and app menu bar from the same session snapshot.
+Cover connected, unavailable, stale ID, missing selection, request expiry/consumption, cycle order, immersive restoration, and absence of Power Off. Test Control Center/system-pinned controls in every supported state.
 
 ```bash
 make macos-test
 xcodebuild -project apps/macos/UltraController/UltraController.xcodeproj \
   -scheme UltraController -destination 'platform=macOS,arch=arm64' test
-
-git add apps/macos/UltraController/Packages/ControlSupport \
-  apps/macos/UltraController/App/Intents \
-  apps/macos/UltraController/ControlsExtension \
-  apps/macos/UltraController/App/Resources/Localizable.xcstrings \
-  apps/macos/UltraController/Tests/Intents \
-  apps/macos/UltraController/UITests \
-  docs/platform/control-center-lifecycle.md
+git add apps/macos/UltraController/Packages/ControlSupport apps/macos/UltraController/App/Intents apps/macos/UltraController/ControlsExtension apps/macos/UltraController/App/Resources/Localizable.xcstrings apps/macos/UltraController/Tests/Intents docs/platform/control-center-lifecycle.md
 git commit -m "feat: add verified macOS system controls"
 ```
 
 ### Task 7: Run the Plan 4 checkpoint
 
 **Files:**
-- Verify Gate A profile/evidence, advanced editor, Gate B evidence/policy, and production controls.
+- Verify profile/evidence/editor/lifecycle policy/system controls.
 
 **Interfaces:**
-- Produces for Plan 5: complete feature set with evidence-backed advanced fields and lifecycle-backed system controls.
+- Produces for Plan 5: complete evidence-backed feature set.
 
-- [ ] **Step 1: Validate the advanced-field profile and evidence**
+- [ ] **Step 1: Validate evidence/profile**
 
 ```bash
 python3 -m json.tool apps/macos/UltraController/App/Resources/VerifiedModeFieldProfile.json >/dev/null
-! grep -E 'UNVALIDATED|TBD|TODO|REPLACE_ME' \
+! grep -E '"validationState": "notRun"|TBD|TODO|REPLACE_ME' \
   apps/macos/UltraController/App/Resources/VerifiedModeFieldProfile.json \
   docs/protocol/qc-ultra-advanced-mode-validation.md \
   docs/platform/control-center-lifecycle.md
 ```
 
-Expected: exit 0. Every production-visible advanced field is `verified` for the exact tested firmware.
-
-- [ ] **Step 2: Run the full automated suite twice**
+- [ ] **Step 2: Run full suite twice**
 
 ```bash
 cargo test --workspace
@@ -975,36 +572,19 @@ make macos-test
 make macos-test
 ```
 
-Expected: all pass twice.
-
-- [ ] **Step 3: Verify the extension has no Bluetooth dependency**
+- [ ] **Step 3: Verify extension isolation and no destructive intent**
 
 ```bash
 ! grep -R -E 'import CoreBluetooth|CBCentralManager|CBPeripheral|HeadphoneTransport' \
   apps/macos/UltraController/ControlsExtension \
   apps/macos/UltraController/Packages/ControlSupport
-```
-
-Expected: exit 0.
-
-- [ ] **Step 4: Verify no destructive system intent exists**
-
-```bash
 ! grep -R -E 'PowerOffIntent|powerOff\(' \
   apps/macos/UltraController/ControlsExtension \
   apps/macos/UltraController/App/Intents
 ```
 
-Expected: exit 0.
+- [ ] **Step 4: Run physical acceptance**
 
-- [ ] **Step 5: Run physical acceptance checks**
+Every visible advanced field confirms/restores. Partial UI shows actual state. Every shipped system control matches Gate B policy. Desktop/app menu bar/system controls converge on one state; diagnostics show one central/session.
 
-- Every visible advanced field applies and reads back.
-- The mode is restored after the test.
-- Partial/failure UI shows actual confirmed state.
-- Set, Cycle, Immersive, and Reconnect controls work in every supported Gate B lifecycle state.
-- Unsupported lifecycle states use the documented fallback.
-- Desktop, app menu bar, Control Center, and system-pinned controls converge on one state.
-- Diagnostics show one central manager/session.
-
-Plan 4 is complete only when both evidence documents are committed and production behavior exactly matches their conclusions.
+Plan 4 completes only when production behavior exactly matches both committed gate conclusions.
