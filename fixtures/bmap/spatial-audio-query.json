@@ -1,0 +1,11 @@
+{
+  "name": "spatial-audio-query",
+  "direction": "request",
+  "wireHex": "050F0100",
+  "expected": {
+    "functionBlock": 5,
+    "function": 15,
+    "operator": 1,
+    "payloadHex": ""
+  }
+}

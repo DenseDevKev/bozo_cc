@@ -1,0 +1,11 @@
+{
+  "name": "audio-mode-capabilities-status",
+  "direction": "response",
+  "wireHex": "1F02030702030000003F01",
+  "expected": {
+    "functionBlock": 31,
+    "function": 2,
+    "operator": 3,
+    "payloadHex": "02030000003F01"
+  }
+}

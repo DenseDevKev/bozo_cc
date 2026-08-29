@@ -1,0 +1,11 @@
+{
+  "name": "power-off-start",
+  "direction": "request",
+  "wireHex": "0704050100",
+  "expected": {
+    "functionBlock": 7,
+    "function": 4,
+    "operator": 5,
+    "payloadHex": "00"
+  }
+}

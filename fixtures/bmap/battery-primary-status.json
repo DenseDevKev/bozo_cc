@@ -1,0 +1,11 @@
+{
+  "name": "battery-primary-status",
+  "direction": "response",
+  "wireHex": "0202030455012C00",
+  "expected": {
+    "functionBlock": 2,
+    "function": 2,
+    "operator": 3,
+    "payloadHex": "55012C00"
+  }
+}

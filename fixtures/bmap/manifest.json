@@ -1,0 +1,12 @@
+{
+  "schemaVersion": 1,
+  "fixtures": [
+    "battery-query.json",
+    "battery-primary-status.json",
+    "standby-30-set.json",
+    "power-off-start.json",
+    "audio-mode-capabilities-status.json",
+    "audio-mode-config-music-status.json",
+    "spatial-audio-query.json"
+  ]
+}

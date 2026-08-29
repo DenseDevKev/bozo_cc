@@ -1,0 +1,11 @@
+{
+  "name": "battery-query",
+  "direction": "request",
+  "wireHex": "02020100",
+  "expected": {
+    "functionBlock": 2,
+    "function": 2,
+    "operator": 1,
+    "payloadHex": ""
+  }
+}

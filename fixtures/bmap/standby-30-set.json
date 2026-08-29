@@ -1,0 +1,11 @@
+{
+  "name": "standby-30-set",
+  "direction": "request",
+  "wireHex": "010402011E",
+  "expected": {
+    "functionBlock": 1,
+    "function": 4,
+    "operator": 2,
+    "payloadHex": "1E"
+  }
+}
