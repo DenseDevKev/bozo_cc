@@ -8,6 +8,8 @@ RELEASE_DAEMON_BIN = $(RELEASE_APP)/Contents/MacOS/bozod
 ULTRA_DIR = apps/macos/UltraController
 ULTRA_PROJECT = $(ULTRA_DIR)/UltraController.xcodeproj
 ULTRA_DESTINATION ?= platform=macOS,arch=arm64
+ULTRA_TEST_DEPLOYMENT_TARGET ?=
+ULTRA_TEST_DEPLOYMENT_OVERRIDE = $(if $(ULTRA_TEST_DEPLOYMENT_TARGET),MACOSX_DEPLOYMENT_TARGET=$(ULTRA_TEST_DEPLOYMENT_TARGET),)
 
 .PHONY: build release run scan debug test clean grant-bluetooth \
 	macos-generate macos-build macos-test macos-test-core macos-probe
@@ -60,6 +62,7 @@ macos-test: macos-generate
 		-configuration Debug \
 		-destination '$(ULTRA_DESTINATION)' \
 		CODE_SIGNING_ALLOWED=NO \
+		$(ULTRA_TEST_DEPLOYMENT_OVERRIDE) \
 		test
 
 macos-probe: macos-generate
@@ -68,7 +71,7 @@ macos-probe: macos-generate
 		-configuration Debug \
 		-destination '$(ULTRA_DESTINATION)' \
 		build
-	open $(HOME)/Library/Developer/Xcode/DerivedData/UltraController-*/Build/Products/Debug/'Ultra Controller Protocol Probe.app'
+	open $(HOME)/Library/Developer/Xcode/DerivedData/UltraController-*/Build/Products/Debug/UltraControllerProtocolProbe.app
 
 clean:
 	cargo clean

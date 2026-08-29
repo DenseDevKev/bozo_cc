@@ -59,8 +59,8 @@ jobs:
       - name: Test HeadphoneCore package
         run: make macos-test-core
 
-      - name: Test macOS application
-        run: make macos-test
+      - name: Test macOS application on hosted runner
+        run: make macos-test ULTRA_TEST_DEPLOYMENT_TARGET=26.0
 
-      - name: Build macOS application
+      - name: Build production macOS 27 application
         run: make macos-build
