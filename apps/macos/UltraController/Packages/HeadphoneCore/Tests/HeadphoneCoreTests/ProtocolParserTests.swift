@@ -22,13 +22,7 @@ final class ProtocolParserTests: XCTestCase {
         XCTAssertEqual(value.minimumFavoriteCount, 1)
     }
 
-    func testAllModesAndCurrentModeParsers() throws {
-        let all = BMAPPacket(
-            functionBlock: .audioModes,
-            function: 0x01,
-            operator: .status,
-            payload: [0, 1, 4]
-        )
+    func testCurrentModeParser() throws {
         let current = BMAPPacket(
             functionBlock: .audioModes,
             function: 0x03,
@@ -36,8 +30,14 @@ final class ProtocolParserTests: XCTestCase {
             payload: [4]
         )
 
-        XCTAssertEqual(try AudioModeMessages.parseAll(all), [0, 1, 4])
         XCTAssertEqual(try AudioModeMessages.parseCurrent(current), 4)
+    }
+
+    func testAudioModeSnapshotUsesStartOperator() throws {
+        XCTAssertEqual(
+            try AudioModeMessages.querySnapshot().encoded(),
+            [0x1F, 0x01, 0x05, 0x00]
+        )
     }
 
     func testModeConfigPreservesOpaqueBytes() throws {
@@ -103,15 +103,54 @@ final class ProtocolParserTests: XCTestCase {
         }
     }
 
-    func testSpatialAudioRejectsUnknownValue() {
+    func testAudioSettingsQueryUsesAudioModesSettingsConfigAddress() throws {
+        XCTAssertEqual(
+            try AudioSettingsMessages.query().encoded(),
+            [0x1F, 0x0A, 0x01, 0x00]
+        )
+    }
+
+    func testAudioSettingsParserReadsFiveByteLiveState() throws {
         let packet = BMAPPacket(
-            functionBlock: .audioManagement,
-            function: 0x0F,
+            functionBlock: .audioModes,
+            function: 0x0A,
             operator: .status,
-            payload: [3]
+            payload: [7, 0, 2, 1, 1]
         )
 
-        XCTAssertThrowsError(try SpatialAudioMessages.parse(packet)) { error in
+        let settings = try AudioSettingsMessages.parse(packet)
+        XCTAssertEqual(settings.cncLevel, 7)
+        XCTAssertFalse(settings.autoCNCEnabled)
+        XCTAssertEqual(settings.spatialAudioMode, .motion)
+        XCTAssertTrue(settings.windBlockEnabled)
+        XCTAssertTrue(settings.ancEnabled)
+    }
+
+    func testAudioSettingsSetGetPreservesNonSpatialFields() throws {
+        let current = AudioSettings(
+            cncLevel: 7,
+            autoCNCEnabled: false,
+            spatialAudioMode: .off,
+            windBlockEnabled: true,
+            ancEnabled: true
+        )
+        let updated = current.replacingSpatialAudioMode(.still)
+
+        XCTAssertEqual(
+            try AudioSettingsMessages.set(updated).encoded(),
+            [0x1F, 0x0A, 0x02, 0x05, 7, 0, 1, 1, 1]
+        )
+    }
+
+    func testAudioSettingsRejectsUnknownSpatialValue() {
+        let packet = BMAPPacket(
+            functionBlock: .audioModes,
+            function: 0x0A,
+            operator: .status,
+            payload: [7, 0, 3, 1, 1]
+        )
+
+        XCTAssertThrowsError(try AudioSettingsMessages.parse(packet)) { error in
             XCTAssertEqual(
                 error as? BMAPResponseError,
                 .unsupportedValue(field: "spatialAudioMode", value: 3)
