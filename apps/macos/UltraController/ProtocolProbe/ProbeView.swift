@@ -2,24 +2,74 @@ import AppKit
 import HeadphoneCore
 import SwiftUI
 
-struct ProbeRootView: View {
-    @StateObject private var model: ProbeViewModel
-    @StateObject private var central: ProbeCentral
+@MainActor
+final class ProbeRuntime: ObservableObject {
+    let model: ProbeViewModel
+    private var central: ProbeCentral?
 
     init() {
-        let model = ProbeViewModel()
-        _model = StateObject(wrappedValue: model)
-        _central = StateObject(wrappedValue: ProbeCentral(model: model))
+        model = ProbeViewModel()
     }
 
+    func startScanning() {
+        if let central {
+            central.startScanning()
+            return
+        }
+
+        // Constructing CBCentralManager may prompt for Bluetooth access and invoke its
+        // delegate immediately. Keep that work out of SwiftUI view initialization.
+        central = ProbeCentral(model: model)
+    }
+
+    func stopScanning() {
+        central?.stopScanning()
+    }
+
+    func connect(idSuffix: String) {
+        central?.connect(idSuffix: idSuffix)
+    }
+
+    func disconnect() {
+        central?.disconnect()
+    }
+
+    func refresh() {
+        guard let central else {
+            model.handle(.error("Press Start Scan before refreshing"))
+            return
+        }
+        central.refresh()
+    }
+
+    func setCurrentMode(_ modeID: UInt8) {
+        central?.setCurrentMode(modeID)
+    }
+
+    func setStandby(_ minutes: UInt8) {
+        central?.setStandby(minutes)
+    }
+
+    func setSpatialAudio(_ mode: SpatialAudioMode) {
+        central?.setSpatialAudio(mode)
+    }
+
+    func powerOff() {
+        central?.powerOff()
+    }
+}
+
+struct ProbeRootView: View {
+    @StateObject private var runtime = ProbeRuntime()
+
     var body: some View {
-        ProbeView(model: model, central: central)
+        ProbeView(model: runtime.model, runtime: runtime)
     }
 }
 
 struct ProbeView: View {
     @ObservedObject var model: ProbeViewModel
-    @ObservedObject var central: ProbeCentral
+    let runtime: ProbeRuntime
     @State private var showsPowerOffConfirmation = false
 
     private let standbyValues: [UInt8] = [0, 5, 10, 20, 30, 60, 120]
@@ -41,7 +91,7 @@ struct ProbeView: View {
         .alert("Power Off Headphones?", isPresented: $showsPowerOffConfirmation) {
             Button("Cancel", role: .cancel) {}
             Button("Power Off", role: .destructive) {
-                central.powerOff()
+                runtime.powerOff()
             }
         } message: {
             Text("Power Off is sent last. The expected result is an immediate Bluetooth disconnect.")
@@ -55,10 +105,10 @@ struct ProbeView: View {
                 Text("QC Ultra Protocol Probe")
                     .font(.title2.weight(.semibold))
                 Spacer()
-                Button("Start Scan") { central.startScanning() }
-                Button("Stop Scan") { central.stopScanning() }
-                Button("Disconnect") { central.disconnect() }
-                Button("Refresh") { central.refresh() }
+                Button("Start Scan") { runtime.startScanning() }
+                Button("Stop Scan") { runtime.stopScanning() }
+                Button("Disconnect") { runtime.disconnect() }
+                Button("Refresh") { runtime.refresh() }
                 Button("Copy Sanitized Session") { copyTranscript() }
             }
 
@@ -74,7 +124,7 @@ struct ProbeView: View {
                 ContentUnavailableView(
                     "No Candidates",
                     systemImage: "dot.radiowaves.left.and.right",
-                    description: Text("The probe checks connected BMAP devices, then runs two bounded scans.")
+                    description: Text("Press Start Scan. The probe checks connected BMAP devices, then runs two bounded scans.")
                 )
             } else {
                 List(model.state.candidates) { candidate in
@@ -87,7 +137,7 @@ struct ProbeView: View {
                         }
                         Spacer()
                         Button("Connect") {
-                            central.connect(idSuffix: candidate.idSuffix)
+                            runtime.connect(idSuffix: candidate.idSuffix)
                         }
                     }
                 }
@@ -100,7 +150,7 @@ struct ProbeView: View {
         GroupBox("Parsed Responses and Scrubbed Packet Hex") {
             ScrollView {
                 LazyVStack(alignment: .leading, spacing: 8) {
-                    ForEach(Array(model.state.rows.enumerated()), id: \.offset) { _, row in
+                    ForEach(model.state.rows) { row in
                         VStack(alignment: .leading, spacing: 2) {
                             Text(row.title)
                                 .font(.caption.weight(.semibold))
@@ -140,7 +190,7 @@ struct ProbeView: View {
                     Menu("Set Existing Mode") {
                         ForEach(model.state.audioModes) { mode in
                             Button("\(mode.name) (\(mode.id))") {
-                                central.setCurrentMode(mode.id)
+                                runtime.setCurrentMode(mode.id)
                             }
                         }
                     }
@@ -149,7 +199,7 @@ struct ProbeView: View {
                     Menu("Set Standby") {
                         ForEach(standbyValues, id: \.self) { minutes in
                             Button(minutes == 0 ? "Never" : "\(minutes) minutes") {
-                                central.setStandby(minutes)
+                                runtime.setStandby(minutes)
                             }
                         }
                     }
@@ -158,7 +208,7 @@ struct ProbeView: View {
                     Menu("Set Spatial Audio") {
                         ForEach(SpatialAudioMode.allCases, id: \.rawValue) { mode in
                             Button(ProbeViewModel.State.spatialTitle(mode)) {
-                                central.setSpatialAudio(mode)
+                                runtime.setSpatialAudio(mode)
                             }
                         }
                     }
