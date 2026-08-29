@@ -1,7 +1,7 @@
 # QC Ultra macOS Controller — Product and Architecture Design
 
 **Date:** 2026-08-29  
-**Status:** Approved for implementation planning  
+**Status:** Ready for user review  
 **Working product name:** QC Ultra Control  
 **Repository:** `DenseDevKev/bozo_cc`  
 **Target branch:** `design/qc-ultra-macos-app`
@@ -26,14 +26,14 @@ The following decisions are fixed for version 1:
 
 - **Supported hardware:** Bose QuietComfort Ultra Headphones Gen 1 only.
 - **Supported platform:** Apple Silicon Macs running macOS 27 or newer.
-- **Implementation:** Native Swift and SwiftUI, with targeted AppKit use where macOS behavior requires it.
+- **Implementation:** Native Swift and SwiftUI in Swift 6 language mode with strict concurrency, plus targeted AppKit use where macOS behavior requires it.
 - **Bluetooth:** One direct CoreBluetooth session owned by the main app process.
 - **Primary experience:** On first launch, the user chooses desktop-first or menu-bar-first behavior. Menu-bar-first is preselected.
 - **Distribution:** Personal build or GitHub Release first; future Mac App Store compatibility is preserved.
 - **Version 1 feature level:** Essential controls plus verified advanced audio-mode editing.
 - **Mode ownership:** The headphones are the sole source of truth. The app will not maintain a separate preset library.
 - **Control Center:** Quick, system-rendered controls only. Power Off is excluded from Control Center.
-- **Editing behavior:** Advanced changes are staged and applied transactionally, then read back from the headphones before the UI reports success.
+- **Editing behavior:** Advanced changes are staged, applied as a verified app-level transaction, and read back from the headphones before the UI reports success.
 - **Runtime dependencies:** No third-party runtime libraries, no embedded browser, no Node process, no Rust daemon, and no local server.
 
 ## 3. Goals
@@ -43,7 +43,7 @@ The following decisions are fixed for version 1:
 The application should let a non-technical user:
 
 - Connect to a paired QC Ultra headset.
-- See connection state, battery level, remaining play time when available, and the current audio mode.
+- See connection state, battery level, remaining play time when available, firmware information, and the current audio mode.
 - Switch among Quiet, Aware, and custom modes.
 - Change Immersive Audio behavior when supported.
 - Change the standby timer.
@@ -60,6 +60,7 @@ The implementation should:
 - Maintain exactly one authoritative Bluetooth session.
 - Remain responsive during scans, reconnections, and command timeouts.
 - Keep protocol code independent from UI and Apple lifecycle code.
+- Keep CoreBluetooth delegate mechanics isolated from domain state.
 - Be testable without physical headphones for most logic.
 - Use event-driven updates instead of periodic polling.
 - Keep idle CPU use effectively zero and avoid unnecessary wakeups.
@@ -97,11 +98,14 @@ bozo_cc/
     └── QCUltraControl/
         ├── QCUltraControl.xcodeproj
         ├── App/
+        │   ├── Application/
+        │   ├── Bluetooth/
+        │   ├── Features/
+        │   └── Resources/
         ├── ControlsExtension/
         ├── Packages/
         │   └── HeadphoneCore/
-        ├── Tests/
-        └── Resources/
+        └── Tests/
 ```
 
 The release app will not link against or launch any Rust binary. The Rust code may be used to cross-check packet behavior and generate test fixtures during development.
@@ -112,7 +116,7 @@ Working identifiers:
 - Control extension: `dev.densedevkev.qcultracontrol.controls`
 - App Group: `group.dev.densedevkev.qcultracontrol`
 
-The user-facing name and branding may change before a public release without changing the architecture.
+The working user-facing name is **QC Ultra Control**. A later branding change does not alter package boundaries, identifiers, or architecture unless explicitly chosen before public release.
 
 ## 6. Architecture
 
@@ -122,17 +126,18 @@ The user-facing name and branding may change before a public release without cha
 Desktop Window ─┐
 Menu Bar ───────┼──> Application Model ──> HeadphoneSession actor
 Settings ───────┘                              │
-                                                v
-                                      HeadphoneCore package
+                                                ├──> HeadphoneCore package
                                                 │
-                                                v
-                                         CoreBluetooth
-                                                │
-                                                v
-                                       QC Ultra Gen 1
+                                                └──> CoreBluetoothTransport
+                                                          │
+                                                          v
+                                                   CoreBluetooth
+                                                          │
+                                                          v
+                                                 QC Ultra Gen 1
 
 Control Center Extension
-    ├── reads a small shared state snapshot
+    ├── reads a versioned shared state snapshot
     └── invokes App Intents in the main app process
 ```
 
@@ -140,7 +145,7 @@ The main application process is the only component that may own a Bluetooth conn
 
 ### 6.2 `HeadphoneCore`
 
-`HeadphoneCore` is an internal Swift package with no SwiftUI, AppKit, UserDefaults, WidgetKit, or application-lifecycle dependencies.
+`HeadphoneCore` is an internal Swift package with no SwiftUI, AppKit, UserDefaults, WidgetKit, CoreBluetooth, or application-lifecycle dependencies.
 
 Responsibilities:
 
@@ -149,15 +154,17 @@ Responsibilities:
 - Typed query and command builders.
 - Typed response parsers.
 - Bose error decoding.
+- Device-identity and firmware models.
 - Capability models.
 - Audio-mode models.
 - Protocol fixtures and deterministic unit tests.
-- A transport abstraction used by session tests.
+- A transport protocol used by session tests.
 
 Representative public types:
 
 ```swift
 struct BMAPPacket
+struct HeadphoneIdentity
 struct HeadphoneCapabilities
 struct HeadphoneState
 struct AudioMode
@@ -170,29 +177,54 @@ protocol HeadphoneTransport
 
 The package must not contain UI-facing status strings. It returns typed data and typed errors; the app layer maps those into user-facing language.
 
-### 6.3 `HeadphoneSession`
+### 6.3 `CoreBluetoothTransport`
 
-`HeadphoneSession` is a long-lived Swift actor that owns all mutable Bluetooth and device state.
+CoreBluetooth uses delegate callbacks and Objective-C runtime conventions that should not leak into the session actor. A small `NSObject`-based adapter isolates those mechanics.
 
 Responsibilities:
 
-- CoreBluetooth central lifecycle.
-- Supported-device discovery and selection.
-- Peripheral connection and service discovery.
-- Notification subscription.
-- BMAP transport.
+- Own `CBCentralManager` and `CBPeripheral` delegate conformance.
+- Run delegate work on one dedicated serial dispatch queue.
+- Discover peripherals, services, and characteristics.
+- Subscribe to notifications.
+- Perform BLE writes.
+- Convert delegate callbacks into small `Sendable` transport events.
+- Expose events to `HeadphoneSession` through an `AsyncStream` or equivalent structured-concurrency boundary.
+
+It does not:
+
+- Parse BMAP domain messages beyond BLE framing needs.
+- Decide reconnection policy.
+- Mutate application state.
+- Present errors to the user.
+- Maintain command queues or capability rules.
+
+This boundary keeps non-Sendable Apple objects confined to one implementation layer while the actor consumes value-type events.
+
+### 6.4 `HeadphoneSession`
+
+`HeadphoneSession` is a long-lived Swift actor that owns all authoritative device and command state. It owns a `CoreBluetoothTransport`, but does not directly serve as a CoreBluetooth delegate.
+
+Responsibilities:
+
+- Supported-device discovery and selection policy.
+- Product identity and firmware validation.
+- Connection state machine.
+- BMAP request and response handling.
 - Initial capability and state loading.
 - Serialized command execution.
 - Timeouts and cancellation.
 - Read-after-write verification.
+- Best-effort rollback for multi-field edits.
 - Reconnection and bounded backoff.
 - Sleep and wake handling.
+- Rate-limited state refreshes.
 - Publishing authoritative state to the app model.
 - Persisting only the selected peripheral identifier and user preferences.
 
 Only one command that changes headset state may be in flight at a time. Read-only refreshes may be coalesced, but they must not race with a state-changing transaction.
 
-### 6.4 Application model
+### 6.5 Application model
 
 A `@MainActor` application model exposes session state to SwiftUI and maps domain errors into presentation state.
 
@@ -200,14 +232,34 @@ It does not contain Bluetooth logic. It coordinates:
 
 - Navigation state.
 - Sheets and confirmations.
-- Staged mode edits.
+- Staged mode edits and their baseline values.
 - Pending-action indicators.
 - User preferences.
 - Shared state snapshot updates for the Control extension.
 
 Every interface observes this same model or a read-only projection of it. No interface maintains a separate copy of authoritative headphone state.
 
-### 6.5 Control Center extension and App Intents
+### 6.6 Shared Control snapshot
+
+The main app writes a compact, versioned snapshot to the App Group container using an atomic replace operation.
+
+The snapshot contains only what Control Center needs:
+
+```swift
+struct SharedHeadphoneSnapshot: Codable, Sendable {
+    let schemaVersion: Int
+    let updatedAt: Date
+    let connectionPhase: SharedConnectionPhase
+    let batteryPercentage: UInt8?
+    let currentModeID: UInt8?
+    let modes: [SharedAudioMode]
+    let immersiveAudio: SharedImmersiveAudioMode?
+}
+```
+
+The extension treats old or unreadable schema versions as unavailable, and treats snapshots older than a defined staleness threshold as stale. It never interprets cached state as proof that a Bluetooth command succeeded.
+
+### 6.7 Control Center extension and App Intents
 
 The WidgetKit Control extension is intentionally small. It may:
 
@@ -252,6 +304,7 @@ permissionRequired
 bluetoothUnavailable
 scanning
 connecting
+validatingDevice
 loadingState
 connected
 reconnecting
@@ -261,22 +314,51 @@ failed
 
 State transitions are explicit and testable. UI surfaces display friendly labels, while diagnostics preserve typed causes.
 
-### 7.2 Initial connection flow
+### 7.2 Device identification and firmware policy
+
+A matching BLE service makes a peripheral a connection candidate, not automatically a supported headset.
+
+After connecting, the session queries product identity, model information available through BMAP, and firmware version before enabling controls. It then applies these rules:
+
+- A confirmed QC Ultra Gen 1 proceeds to capability loading.
+- A known unsupported product is rejected with a clear message.
+- An ambiguous product is not given write access until identity can be confirmed.
+- Essential controls may remain available on a new firmware only after required capability queries and safe read paths succeed.
+- Advanced editing is disabled for firmware that has not passed the physical-device compatibility checks unless its responses exactly match a validated capability profile.
+
+Firmware version is visible in About/Device information and included in diagnostics, but never used as a substitute for runtime capability checks.
+
+### 7.3 Initial connection flow
 
 ```text
 Bluetooth permission granted
-    -> scan for the selected compatible peripheral
+    -> locate or scan for the selected candidate peripheral
     -> connect
     -> discover BMAP service and characteristics
     -> subscribe to notifications
+    -> query and validate product identity and firmware
     -> query capabilities
     -> query device name, battery, current mode, modes, standby, and spatial state
     -> publish connected state
 ```
 
-The app must not consider the session fully connected until notifications are active and the initial state load has completed or reached a defined partial-state timeout.
+The app must not consider the session fully connected until notifications are active, identity is supported, and the initial state load has completed or reached a defined partial-state timeout.
 
-### 7.3 Reconnection
+### 7.4 State refresh policy
+
+The session refreshes state on:
+
+- Initial connection.
+- Relevant headset notifications.
+- Successful state-changing commands.
+- App activation.
+- Menu-bar controller presentation.
+- Mac wake.
+- Explicit user refresh or reconnect.
+
+Lifecycle-triggered reads are rate-limited and coalesced. There is no permanent background polling timer. This keeps battery and mode state current when the user interacts with the app without creating unnecessary wakeups.
+
+### 7.5 Reconnection
 
 Unexpected disconnects use bounded backoff:
 
@@ -288,12 +370,12 @@ The retry counter resets after a stable connection. Scanning pauses while the Ma
 
 The app avoids continuous high-duty scanning. When the selected device remains unavailable, it reduces scan frequency and exposes a clear disconnected state.
 
-### 7.4 Command transactions
+### 7.6 Single-setting command transactions
 
 Every state-changing command follows the same transaction:
 
 ```text
-validate capability and connection
+validate identity, capability, and connection
     -> enqueue command
     -> write BMAP packet
     -> wait for transport acknowledgement when available
@@ -306,12 +388,29 @@ The UI may show an optimistic pending selection, but it must visually distinguis
 
 A command is not successful merely because bytes were queued for Bluetooth transmission.
 
-### 7.5 Timeouts and cancellation
+### 7.7 Multi-field mode Apply transaction
+
+The headphones may not support an atomic write for a complete mode configuration. Therefore, **transactional** means an app-coordinated, verified sequence rather than a promise of hardware atomicity.
+
+When Apply is pressed:
+
+1. Capture the last confirmed mode configuration as the rollback baseline.
+2. Validate every changed field against capabilities.
+3. Write changed fields in a defined safe order.
+4. Query the complete mode configuration.
+5. Compare every intended field while preserving unknown fields.
+6. Report success only when the read-back matches.
+7. On failure, attempt a best-effort restoration of fields already changed.
+8. Query the complete configuration again and display the actual headset state.
+
+If restoration is incomplete, the app explicitly reports a partial apply. It never pretends that the baseline was restored when the headset reports otherwise.
+
+### 7.8 Timeouts and cancellation
 
 - Each command has an explicit timeout appropriate to the operation.
 - A disconnect cancels commands that require the old connection.
 - A superseding user action may cancel an older queued action that has not started.
-- Power Off ends the session immediately after the command is accepted and does not wait for a read-back that cannot occur after shutdown.
+- Power Off ends the session after the write is accepted by the transport and does not wait for a read-back that cannot occur after shutdown.
 - Repeated identical commands are coalesced.
 
 ## 8. Capability-driven behavior
@@ -323,8 +422,9 @@ The UI follows these rules:
 - Unsupported properties are hidden.
 - Read-only properties are displayed but not editable.
 - Writable properties are enabled only after successful capability validation.
-- Unknown flags are preserved when rewriting a mode configuration.
+- Unknown flags and bytes are preserved when rewriting a mode configuration.
 - A mode edit writes only fields that changed.
+- Advanced writes require a supported identity, compatible firmware profile, and a validated response shape.
 - Any property that cannot be safely written and read back during the feasibility phase is removed from version 1.
 
 Candidate advanced properties for validation:
@@ -347,11 +447,11 @@ Onboarding is short and functional:
 
 1. **Welcome** — explains direct local control, no Bose account, and no cloud service.
 2. **Bluetooth Access** — requests permission and gives a recovery path if denied.
-3. **Select Headphones** — lists compatible QC Ultra Gen 1 devices and stores the selected peripheral identifier.
+3. **Select Headphones** — lists QC Ultra connection candidates, connects to the selection, and validates that it is a supported Gen 1 headset before saving it.
 4. **Choose App Behavior** — menu-bar-first is preselected; desktop-first is the alternative.
 5. **Optional Integration** — launch at login, battery in menu bar, and instructions for adding Control Center controls.
 
-Unsupported Bose products are shown as unsupported or omitted; the app does not attempt uncertain compatibility.
+Known unsupported Bose products are omitted or labeled unsupported. An ambiguous candidate is validated after connection and rejected safely if it is not the target headset.
 
 ### 9.2 Desktop window
 
@@ -375,17 +475,17 @@ The main window uses a native `NavigationSplitView` with three destinations.
 - Lists modes stored on the headphones.
 - Selecting a mode opens a native detail editor.
 - Shows only properties supported by that mode and headset.
-- Edits are staged locally.
-- Apply performs a verified transaction.
+- Edits are staged locally against a captured baseline.
+- Apply performs the verified multi-field sequence.
 - Cancel discards staged changes.
-- A failed or partially rejected transaction restores the confirmed headset state and explains what failed.
+- A failed or partially rejected sequence refreshes the confirmed headset state and explains whether rollback succeeded.
 
 There is no app-only preset library.
 
 #### Settings
 
 - Desktop-first or menu-bar-first behavior.
-- Show or hide the menu-bar item.
+- Show or hide the menu-bar item, subject to the accessibility rule in Section 11.
 - Menu-bar icon only or icon plus battery percentage.
 - Launch at login.
 - Automatic reconnect.
@@ -443,12 +543,25 @@ The target visual reference is a first-party macOS accessory settings panel, not
 
 ## 11. App lifecycle and preferences
 
-The onboarding choice controls launch behavior:
+The onboarding choice controls launch and Dock behavior.
 
-- **Menu-bar-first:** the app launches without presenting the main window and keeps a menu-bar item available.
-- **Desktop-first:** the app activates normally and opens the Overview window.
+### Menu-bar-first
 
-The choice is changeable later. The app may adjust Dock visibility using public macOS APIs, but it must always provide a discoverable way to reopen the full window.
+- Launch as an accessory-style application with no initial desktop window and no Dock icon.
+- Keep the menu-bar item visible.
+- **Open Full App** switches to regular activation, shows the Dock icon, activates the app, and opens the Overview window.
+- Closing the last desktop window returns the app to accessory behavior when the user remains in menu-bar-first mode.
+
+### Desktop-first
+
+- Launch as a regular application.
+- Show the Dock icon.
+- Activate the app and open the Overview window.
+- Closing the window leaves the app running only when the menu-bar item is enabled; otherwise normal app termination behavior applies.
+
+The menu-bar item cannot be disabled while menu-bar-first mode is active and no regular Dock presence is configured. The user must switch to desktop-first before hiding their only persistent access point.
+
+All activation-policy changes use documented public AppKit APIs and must be covered by lifecycle UI tests.
 
 Preferences stored locally:
 
@@ -475,6 +588,7 @@ Requirements:
 - No analytics, crash-upload service, account, or cloud storage.
 - Use `os.Logger` with privacy annotations.
 - Release logs must not expose serial numbers, stable device identifiers, or raw packet payloads by default.
+- Debug packet logging is opt-in, local, visibly marked, and excluded from normal release behavior.
 - A privacy manifest and clear Bluetooth usage description are included.
 - Launch at Login uses the current public ServiceManagement API.
 
@@ -508,16 +622,20 @@ Errors are divided into typed categories:
 - Permission denied.
 - Bluetooth powered off or unavailable.
 - Supported device not found.
+- Unsupported or ambiguous product identity.
+- Unvalidated firmware for advanced writes.
 - Connection failed.
 - Service or characteristic unavailable.
 - Protocol parse failure.
 - Headphone-reported BMAP error.
 - Command timeout.
 - Read-back mismatch.
+- Partial multi-field apply.
+- Rollback failure.
 - Unsupported operation.
 - Stale Control Center configuration.
 
-Normal UI presents concise recovery-oriented messages. Developer diagnostics may expose function block, function ID, operator, and error code, but raw packet inspection is never part of the default interface.
+Normal UI presents concise recovery-oriented messages. Developer diagnostics may expose firmware version, function block, function ID, operator, and error code, but raw packet inspection is never part of the default interface.
 
 No interface should silently ignore a failed command or display unconfirmed settings as final.
 
@@ -532,18 +650,21 @@ No interface should silently ignore a failed command or display unconfirmed sett
 - Segmentation and reassembly.
 - Multi-packet notifications.
 - Incomplete, malformed, and out-of-order data.
+- Product identity and firmware parsing.
 - Battery parsing.
 - Capability parsing.
 - Mode-list and mode-configuration parsing.
 - Standby parsing.
 - Spatial-audio parsing.
+- Preservation of unknown mode fields.
 - Known sanitized fixtures captured from the physical headset.
 
-### 15.2 Session tests
+### 15.2 Transport and session tests
 
 A fake `HeadphoneTransport` covers:
 
 - Every connection-state transition.
+- Candidate-device validation.
 - Initial state loading.
 - Command serialization.
 - Write failure.
@@ -552,18 +673,25 @@ A fake `HeadphoneTransport` covers:
 - Reconnection and backoff.
 - Rejected properties.
 - Read-back mismatch.
+- Partial multi-field apply.
+- Successful and failed rollback.
 - Superseded and coalesced commands.
 - Sleep and wake behavior.
+- Refresh coalescing and rate limiting.
 - Control Center requests while connected and disconnected.
+
+CoreBluetooth adapter tests verify event translation and confinement without duplicating session policy tests.
 
 ### 15.3 UI and accessibility tests
 
 Tests cover:
 
 - Onboarding.
-- Device selection.
+- Device selection and unsupported-device rejection.
 - Desktop-first and menu-bar-first launch behavior.
-- Mode staging, Apply, Cancel, and failure restoration.
+- Dock and menu-bar transitions.
+- Prevention of an inaccessible no-Dock/no-menu configuration.
+- Mode staging, Apply, Cancel, partial apply, and rollback reporting.
 - Settings persistence.
 - Power-off confirmation.
 - Keyboard navigation.
@@ -578,11 +706,13 @@ Every release candidate is tested with the target headset for:
 
 - Fresh pairing and first launch.
 - Permission denial and recovery.
+- Product identity and firmware reporting.
 - Cold launch.
 - Automatic reconnection.
 - Quiet, Aware, and custom-mode switching.
 - Immersive Audio changes.
 - Every advanced property retained for version 1.
+- Multi-field apply and rollback behavior.
 - Standby timer.
 - Power Off.
 - Menu-bar operation.
@@ -666,16 +796,17 @@ The same codebase should be submittable after adding store metadata, review docu
 
 Version 1 is complete when:
 
-1. A first-time user can grant permission, select a QC Ultra Gen 1, choose desktop-first or menu-bar-first behavior, and connect without terminal use.
+1. A first-time user can grant permission, select and validate a QC Ultra Gen 1, choose desktop-first or menu-bar-first behavior, and connect without terminal use.
 2. Desktop and menu-bar interfaces display one consistent, confirmed state.
 3. Battery, current mode, mode switching, Immersive Audio when supported, standby, reconnect, and power-off work reliably.
 4. Every included advanced mode property passes the validation gate and uses read-after-write verification.
-5. Control Center controls execute safely or provide a clear open-app fallback.
-6. The app survives disconnects, sleep/wake, and headset unavailability without hanging or spinning.
-7. Protocol, session, UI, accessibility, and physical-device release checks pass.
-8. The release build is sandboxed, local-only, ARM64, and free of a Rust daemon or third-party runtime dependency.
-9. Idle performance meets the defined CPU, memory, and wakeup targets or deviations are documented before release.
-10. The project can be prepared for a Mac App Store submission without an architectural rewrite.
+5. Multi-field Apply reports confirmed success, confirmed rollback, or the actual partial state; it never hides uncertainty.
+6. Control Center controls execute safely or provide a clear open-app fallback.
+7. The app survives disconnects, sleep/wake, and headset unavailability without hanging or spinning.
+8. Protocol, transport, session, UI, accessibility, and physical-device release checks pass.
+9. The release build is sandboxed, local-only, ARM64, and free of a Rust daemon or third-party runtime dependency.
+10. Idle performance meets the defined CPU, memory, and wakeup targets or deviations are documented before release.
+11. The project can be prepared for a Mac App Store submission without an architectural rewrite.
 
 ## 19. Decision record
 
@@ -687,9 +818,10 @@ Version 1 is complete when:
 | Feature scope | Essential controls plus advanced editing | Useful daily controller without turning the app into a protocol lab |
 | Preset ownership | Headphones only | Avoids synchronization conflicts and duplicated state |
 | Runtime architecture | Pure native Swift | Lowest integration complexity and best macOS fit |
+| Bluetooth boundary | Delegate adapter plus session actor | Confines Apple callback objects and keeps domain state testable |
 | Process model | Main app owns one BLE session | Prevents competing connections and inconsistent state |
 | Platform | macOS 27+, Apple Silicon | Enables current native design and removes legacy compatibility burden |
-| Mode editing | Staged, Apply, then read back | Prevents UI drift and excessive Bluetooth writes |
+| Mode editing | Staged, Apply, read back, best-effort rollback | Prevents UI drift without pretending the headset supports atomic writes |
 | Control Center Power Off | Excluded | Destructive action lacks a dependable confirmation surface |
 
-This design is the authoritative input to the implementation plan.
+Once approved by the user, this design becomes the authoritative input to the implementation plan.
