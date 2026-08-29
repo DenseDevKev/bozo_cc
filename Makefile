@@ -10,6 +10,9 @@ ULTRA_PROJECT = $(ULTRA_DIR)/UltraController.xcodeproj
 ULTRA_DESTINATION ?= platform=macOS,arch=arm64
 ULTRA_TEST_DEPLOYMENT_TARGET ?=
 ULTRA_TEST_DEPLOYMENT_OVERRIDE = $(if $(ULTRA_TEST_DEPLOYMENT_TARGET),MACOSX_DEPLOYMENT_TARGET=$(ULTRA_TEST_DEPLOYMENT_TARGET),)
+ULTRA_PROBE_DERIVED_DATA = $(ULTRA_DIR)/build/ProbeDerivedData
+ULTRA_PROBE_APP = $(ULTRA_PROBE_DERIVED_DATA)/Build/Products/Debug/UltraControllerProtocolProbe.app
+ULTRA_PROBE_INFO = $(ULTRA_PROBE_APP)/Contents/Info.plist
 
 .PHONY: build release run scan debug test clean grant-bluetooth \
 	macos-generate macos-build macos-test macos-test-core macos-probe-build macos-probe-verify-plist macos-probe
@@ -66,17 +69,23 @@ macos-test: macos-generate
 		test
 
 macos-probe-build: macos-generate
+	rm -rf $(ULTRA_PROBE_DERIVED_DATA)
 	xcodebuild -project $(ULTRA_PROJECT) \
 		-scheme UltraControllerProtocolProbe \
 		-configuration Debug \
 		-destination '$(ULTRA_DESTINATION)' \
+		-derivedDataPath $(ULTRA_PROBE_DERIVED_DATA) \
 		CODE_SIGNING_ALLOWED=NO \
 		build
 
 macos-probe-verify-plist: macos-probe-build
-	@PLIST=$$(find $(HOME)/Library/Developer/Xcode/DerivedData -path '*UltraControllerProtocolProbe.app/Contents/Info.plist' -print -quit); \
-	if [ -z "$$PLIST" ]; then echo "Probe Info.plist not found"; exit 1; fi; \
-	VALUE=$$(/usr/libexec/PlistBuddy -c 'Print :NSBluetoothAlwaysUsageDescription' "$$PLIST" 2>/dev/null || true); \
+	@if [ ! -f "$(ULTRA_PROBE_INFO)" ]; then \
+		echo "Probe Info.plist not found at $(ULTRA_PROBE_INFO)"; \
+		exit 1; \
+	fi
+	@echo "Inspecting freshly built probe plist: $(ULTRA_PROBE_INFO)"
+	@/usr/libexec/PlistBuddy -c 'Print' "$(ULTRA_PROBE_INFO)"
+	@VALUE=$$(/usr/libexec/PlistBuddy -c 'Print :NSBluetoothAlwaysUsageDescription' "$(ULTRA_PROBE_INFO)" 2>/dev/null || true); \
 	if [ -z "$$VALUE" ]; then echo "Built probe is missing NSBluetoothAlwaysUsageDescription"; exit 1; fi; \
 	echo "Verified built probe Bluetooth usage description: $$VALUE"
 
@@ -85,8 +94,9 @@ macos-probe: macos-generate
 		-scheme UltraControllerProtocolProbe \
 		-configuration Debug \
 		-destination '$(ULTRA_DESTINATION)' \
+		-derivedDataPath $(ULTRA_PROBE_DERIVED_DATA) \
 		build
-	open $(HOME)/Library/Developer/Xcode/DerivedData/UltraController-*/Build/Products/Debug/UltraControllerProtocolProbe.app
+	open $(ULTRA_PROBE_APP)
 
 clean:
 	cargo clean
