@@ -35,7 +35,8 @@ targets:
     settings:
       base:
         PRODUCT_BUNDLE_IDENTIFIER: dev.densedevkev.ultracontroller
-        PRODUCT_NAME: Ultra Controller
+        PRODUCT_NAME: UltraController
+        PRODUCT_DISPLAY_NAME: Ultra Controller
         PRODUCT_MODULE_NAME: UltraController
         EXECUTABLE_NAME: UltraController
         ARCHS: arm64
@@ -55,8 +56,10 @@ targets:
     settings:
       base:
         PRODUCT_BUNDLE_IDENTIFIER: dev.densedevkev.ultracontroller.probe
-        PRODUCT_NAME: Ultra Controller Protocol Probe
+        PRODUCT_NAME: UltraControllerProtocolProbe
+        PRODUCT_DISPLAY_NAME: Ultra Controller Protocol Probe
         PRODUCT_MODULE_NAME: UltraControllerProtocolProbe
+        EXECUTABLE_NAME: UltraControllerProtocolProbe
         ARCHS: arm64
         SUPPORTED_PLATFORMS: macosx
 
