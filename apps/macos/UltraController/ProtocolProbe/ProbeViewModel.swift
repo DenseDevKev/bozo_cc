@@ -4,6 +4,8 @@ import HeadphoneCore
 
 final class ProbeViewModel: ObservableObject {
     struct State: Equatable {
+        static let maximumTranscriptRows = 500
+
         var status = "Initializing Bluetooth…"
         var rows: [ProbeRow] = []
         var candidates: [ProbeCandidate] = []
@@ -17,6 +19,8 @@ final class ProbeViewModel: ObservableObject {
         var audioModes: [AudioMode] = []
         var standbyMinutes: UInt8?
         var spatialAudioMode: SpatialAudioMode?
+
+        private var nextRowID: UInt64 = 0
 
         var canConfirmSafeWrites: Bool {
             guard let productName = identity?.productName else { return false }
@@ -45,15 +49,15 @@ final class ProbeViewModel: ObservableObject {
 
             case let .discovered(name, idSuffix, rssi):
                 let candidate = ProbeCandidate(name: name, idSuffix: idSuffix, rssi: rssi)
+                let detail = "\(name) • …\(idSuffix) • \(Self.formatRSSI(rssi))"
+
                 if let existingIndex = candidates.firstIndex(where: { $0.idSuffix == idSuffix }) {
                     candidates[existingIndex] = candidate
+                    updateDiscoveryRow(idSuffix: idSuffix, detail: detail)
                 } else {
                     candidates.append(candidate)
+                    append(title: "Discovered", detail: detail)
                 }
-                append(
-                    title: "Discovered",
-                    detail: "\(name) • …\(idSuffix) • \(Self.formatRSSI(rssi))"
-                )
 
             case let .connecting(name):
                 status = "Connecting to \(name)…"
@@ -138,7 +142,32 @@ final class ProbeViewModel: ObservableObject {
         }
 
         private mutating func append(title: String, detail: String) {
-            rows.append(ProbeRow(title: title, detail: detail))
+            rows.append(ProbeRow(id: nextRowID, title: title, detail: detail))
+            nextRowID &+= 1
+            trimTranscriptIfNeeded()
+        }
+
+        private mutating func updateDiscoveryRow(idSuffix: String, detail: String) {
+            let marker = "…\(idSuffix) •"
+            guard let rowIndex = rows.lastIndex(where: {
+                $0.title == "Discovered" && $0.detail.contains(marker)
+            }) else {
+                append(title: "Discovered", detail: detail)
+                return
+            }
+
+            rows[rowIndex] = ProbeRow(
+                id: rows[rowIndex].id,
+                title: "Discovered",
+                detail: detail
+            )
+        }
+
+        private mutating func trimTranscriptIfNeeded() {
+            let overflow = rows.count - Self.maximumTranscriptRows
+            if overflow > 0 {
+                rows.removeFirst(overflow)
+            }
         }
 
         private static func formatRSSI(_ rssi: Int) -> String {
