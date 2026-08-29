@@ -7,8 +7,11 @@
 	objects = {
 
 /* Begin PBXBuildFile section */
+		05FA31235FC5CDAC1DCC3173 /* ProbeViewModel.swift in Sources */ = {isa = PBXBuildFile; fileRef = 15CF1D1D18EB615E682B1FCC /* ProbeViewModel.swift */; };
 		0BA7700BE8305910B39B9CFB /* UltraControllerApp.swift in Sources */ = {isa = PBXBuildFile; fileRef = DAF0B09E1697D349C3AE8B58 /* UltraControllerApp.swift */; };
 		0D90834AEA85C6A84365E575 /* UltraControllerUITestSmokeTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 23B744037CA326868E989EAA /* UltraControllerUITestSmokeTests.swift */; };
+		104088A041283084FCFDA30D /* ProbeEvent.swift in Sources */ = {isa = PBXBuildFile; fileRef = 445E74AD154D0423FADBB031 /* ProbeEvent.swift */; };
+		24F5544EBBA9FA166FC29413 /* ProbeViewModel.swift in Sources */ = {isa = PBXBuildFile; fileRef = 15CF1D1D18EB615E682B1FCC /* ProbeViewModel.swift */; };
 		2E231029D0FAF8C6DBAF1661 /* PlaceholderOverviewView.swift in Sources */ = {isa = PBXBuildFile; fileRef = F3F9B6256F6A802FAF5915E1 /* PlaceholderOverviewView.swift */; };
 		33EA329860EBDC3805B86580 /* HeadphoneCore in Frameworks */ = {isa = PBXBuildFile; productRef = 629AA3173E3F3D1E809CF7D9 /* HeadphoneCore */; };
 		359534B18F0B7B8525D3655E /* UltraControllerSmokeTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8F607B0B0829BCB5E2EC7619 /* UltraControllerSmokeTests.swift */; };
@@ -16,6 +19,7 @@
 		480B8E92B923D005048FD069 /* HeadphoneCore in Frameworks */ = {isa = PBXBuildFile; productRef = 6B5AE84B8E68E39C1A371FF0 /* HeadphoneCore */; };
 		48218DFA94DE1FCAB376EF2D /* XCTestAsyncSupport.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7E0D4FE536C065BDBA5F0584 /* XCTestAsyncSupport.swift */; };
 		5BC63217768A58B07DA373B0 /* HeadphoneCore in Frameworks */ = {isa = PBXBuildFile; productRef = 4C5686A4EBB2B827C72344F2 /* HeadphoneCore */; };
+		C13123DB8E99E31BB024D23F /* ProbeEvent.swift in Sources */ = {isa = PBXBuildFile; fileRef = 445E74AD154D0423FADBB031 /* ProbeEvent.swift */; };
 		DFED2C604671A3ED4087BA09 /* ProtocolProbeReducerTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 52F7FD5FC276442B6CF090EA /* ProtocolProbeReducerTests.swift */; };
 /* End PBXBuildFile section */
 
@@ -37,7 +41,9 @@
 /* End PBXContainerItemProxy section */
 
 /* Begin PBXFileReference section */
+		15CF1D1D18EB615E682B1FCC /* ProbeViewModel.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ProbeViewModel.swift; sourceTree = "<group>"; };
 		23B744037CA326868E989EAA /* UltraControllerUITestSmokeTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = UltraControllerUITestSmokeTests.swift; sourceTree = "<group>"; };
+		445E74AD154D0423FADBB031 /* ProbeEvent.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ProbeEvent.swift; sourceTree = "<group>"; };
 		52F7FD5FC276442B6CF090EA /* ProtocolProbeReducerTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ProtocolProbeReducerTests.swift; sourceTree = "<group>"; };
 		5EB3C299506ABC31EEBB7774 /* UltraController.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = UltraController.app; sourceTree = BUILT_PRODUCTS_DIR; };
 		6569A39AA70B1C43BA1E04A5 /* UltraControllerUITests.xctest */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = UltraControllerUITests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
@@ -102,6 +108,8 @@
 		17E19F34C30023EEFF7F7BAC /* ProtocolProbe */ = {
 			isa = PBXGroup;
 			children = (
+				445E74AD154D0423FADBB031 /* ProbeEvent.swift */,
+				15CF1D1D18EB615E682B1FCC /* ProbeViewModel.swift */,
 				B4072750119A7D63D5BA737F /* ProtocolProbeApp.swift */,
 			);
 			path = ProtocolProbe;
@@ -318,6 +326,8 @@
 			isa = PBXSourcesBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
+				C13123DB8E99E31BB024D23F /* ProbeEvent.swift in Sources */,
+				05FA31235FC5CDAC1DCC3173 /* ProbeViewModel.swift in Sources */,
 				DFED2C604671A3ED4087BA09 /* ProtocolProbeReducerTests.swift in Sources */,
 				359534B18F0B7B8525D3655E /* UltraControllerSmokeTests.swift in Sources */,
 				48218DFA94DE1FCAB376EF2D /* XCTestAsyncSupport.swift in Sources */,
@@ -336,6 +346,8 @@
 			isa = PBXSourcesBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
+				104088A041283084FCFDA30D /* ProbeEvent.swift in Sources */,
+				24F5544EBBA9FA166FC29413 /* ProbeViewModel.swift in Sources */,
 				4005633D52E9D4946C30AE3D /* ProtocolProbeApp.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
