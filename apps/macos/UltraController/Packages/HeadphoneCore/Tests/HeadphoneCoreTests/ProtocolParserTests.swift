@@ -1,0 +1,137 @@
+import XCTest
+@testable import HeadphoneCore
+
+final class ProtocolParserTests: XCTestCase {
+    func testAudioModeCapabilitiesParser() throws {
+        let packet = BMAPPacket(
+            functionBlock: .audioModes,
+            function: 0x02,
+            operator: .status,
+            payload: [2, 3, 0, 0, 0, 0b0011_1111, 1]
+        )
+
+        let value = try AudioModeMessages.parseCapabilities(packet)
+        XCTAssertEqual(value.boseModeCount, 2)
+        XCTAssertEqual(value.userModeCount, 3)
+        XCTAssertTrue(value.supportsCNC)
+        XCTAssertTrue(value.supportsAutoCNC)
+        XCTAssertTrue(value.supportsSpatialAudio)
+        XCTAssertTrue(value.supportsWindBlock)
+        XCTAssertTrue(value.supportsFavorites)
+        XCTAssertTrue(value.supportsANCToggle)
+        XCTAssertEqual(value.minimumFavoriteCount, 1)
+    }
+
+    func testAllModesAndCurrentModeParsers() throws {
+        let all = BMAPPacket(
+            functionBlock: .audioModes,
+            function: 0x01,
+            operator: .status,
+            payload: [0, 1, 4]
+        )
+        let current = BMAPPacket(
+            functionBlock: .audioModes,
+            function: 0x03,
+            operator: .status,
+            payload: [4]
+        )
+
+        XCTAssertEqual(try AudioModeMessages.parseAll(all), [0, 1, 4])
+        XCTAssertEqual(try AudioModeMessages.parseCurrent(current), 4)
+    }
+
+    func testModeConfigPreservesOpaqueBytes() throws {
+        var payload = [UInt8](repeating: 0, count: 48)
+        payload[0] = 2
+        payload[2] = 12
+        payload[3] = 1
+        payload[4] = 1
+        payload[5] = 1
+        Array("Music".utf8).enumerated().forEach { payload[6 + $0.offset] = $0.element }
+        payload[38] = 0xA1
+        payload[39] = 0xB2
+        payload[40] = 0xC3
+        payload[41] = 0b0001_1111
+        payload[42] = 7
+        payload[43] = 1
+        payload[44] = 2
+        payload[45] = 0xD4
+        payload[46] = 1
+        payload[47] = 1
+
+        let packet = BMAPPacket(
+            functionBlock: .audioModes,
+            function: 0x06,
+            operator: .status,
+            payload: payload
+        )
+        let mode = try AudioModeMessages.parseConfiguration(packet)
+
+        XCTAssertEqual(mode.id, 2)
+        XCTAssertEqual(mode.promptID, 12)
+        XCTAssertEqual(mode.name, "Music")
+        XCTAssertTrue(mode.isUserConfigurable)
+        XCTAssertTrue(mode.isUserConfigured)
+        XCTAssertTrue(mode.isFavorite)
+        XCTAssertEqual(mode.cncLevel, 7)
+        XCTAssertEqual(mode.autoCNCEnabled, true)
+        XCTAssertEqual(mode.spatialAudioMode, .motion)
+        XCTAssertEqual(mode.windBlockEnabled, true)
+        XCTAssertEqual(mode.ancEnabled, true)
+        XCTAssertEqual(mode.opaqueReservedBytes, [0xA1, 0xB2, 0xC3, 0xD4])
+        XCTAssertEqual(mode.rawPayload, payload)
+    }
+
+    func testModeConfigRejectsNonBooleanField() {
+        var payload = [UInt8](repeating: 0, count: 48)
+        payload[0] = 2
+        payload[3] = 1
+        payload[41] = 0b0000_0010
+        payload[43] = 2
+        let packet = BMAPPacket(
+            functionBlock: .audioModes,
+            function: 0x06,
+            operator: .status,
+            payload: payload
+        )
+
+        XCTAssertThrowsError(try AudioModeMessages.parseConfiguration(packet)) { error in
+            XCTAssertEqual(
+                error as? BMAPResponseError,
+                .unsupportedValue(field: "autoCNCEnabled", value: 2)
+            )
+        }
+    }
+
+    func testSpatialAudioRejectsUnknownValue() {
+        let packet = BMAPPacket(
+            functionBlock: .audioManagement,
+            function: 0x0F,
+            operator: .status,
+            payload: [3]
+        )
+
+        XCTAssertThrowsError(try SpatialAudioMessages.parse(packet)) { error in
+            XCTAssertEqual(
+                error as? BMAPResponseError,
+                .unsupportedValue(field: "spatialAudioMode", value: 3)
+            )
+        }
+    }
+
+    func testParserRejectsWrongResponseOperator() {
+        let packet = BMAPPacket(
+            functionBlock: .settings,
+            function: 0x04,
+            operator: .result,
+            payload: [30]
+        )
+
+        XCTAssertThrowsError(try StandbyMessages.parse(packet)) { error in
+            XCTAssertEqual(
+                error as? BMAPResponseError,
+                .unexpectedOperator(expected: .status, actual: .result)
+            )
+        }
+    }
+}
