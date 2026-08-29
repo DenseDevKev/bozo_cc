@@ -1,0 +1,37 @@
+name: Ultra Controller CI
+
+on:
+  push:
+    branches:
+      - feat/ultra-controller
+    paths:
+      - '.github/workflows/ultra-controller-ci.yml'
+      - '.gitignore'
+      - 'Makefile'
+      - 'apps/macos/UltraController/**'
+      - 'crates/bozo-proto/**'
+      - 'fixtures/bmap/**'
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+concurrency:
+  group: ultra-controller-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  project-contract:
+    runs-on: xcode-27
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v4
+
+      - name: Show toolchain
+        run: |
+          sw_vers
+          xcodebuild -version
+          swift --version
+
+      - name: Verify project contract
+        run: apps/macos/UltraController/Scripts/verify-project.sh
