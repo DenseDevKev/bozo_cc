@@ -94,6 +94,7 @@ pub mod audio_modes {
     pub const CURRENT_MODE: u8 = 0x03;
     pub const DEFAULT_MODE: u8 = 0x04;
     pub const MODE_CONFIG: u8 = 0x06;
+    pub const SETTINGS_CONFIG: u8 = 0x0A;
 }
 
 /// Product Info function IDs (FBlock = 0x00).

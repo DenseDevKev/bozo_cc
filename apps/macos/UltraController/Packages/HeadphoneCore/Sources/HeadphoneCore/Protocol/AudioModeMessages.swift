@@ -1,16 +1,19 @@
 import Foundation
 
 public enum AudioModeMessages {
-    private static let allFunction: UInt8 = 0x01
+    private static let snapshotFunction: UInt8 = 0x01
     private static let capabilitiesFunction: UInt8 = 0x02
     private static let currentFunction: UInt8 = 0x03
     private static let configurationFunction: UInt8 = 0x06
 
-    public static func queryAll() -> BMAPPacket {
+    /// Starts the AudioModes GetAll snapshot. The headset answers with a burst
+    /// of STATUS packets for the supported AudioModes functions; function 0x01
+    /// itself is not a list-valued GET endpoint.
+    public static func querySnapshot() -> BMAPPacket {
         BMAPPacket(
             functionBlock: .audioModes,
-            function: allFunction,
-            operator: .get
+            function: snapshotFunction,
+            operator: .start
         )
     }
 
@@ -49,22 +52,6 @@ public enum AudioModeMessages {
             operator: .start,
             payload: [index, playVoicePrompt ? 1 : 0]
         )
-    }
-
-    public static func parseAll(_ packet: BMAPPacket) throws -> [UInt8] {
-        try BMAPResponseValidator.validateStatus(
-            packet,
-            functionBlock: .audioModes,
-            function: allFunction
-        )
-
-        guard !packet.payload.isEmpty else {
-            throw BMAPResponseError.malformedPayload(
-                expected: "one or more audio-mode indexes",
-                actual: 0
-            )
-        }
-        return packet.payload
     }
 
     public static func parseCapabilities(

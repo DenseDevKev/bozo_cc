@@ -32,6 +32,8 @@ final class ProbeCentral: NSObject, ObservableObject {
     private var queuedPackets: [QueuedPacket] = []
     private var isDrainingPackets = false
     private var packetDrainWorkItem: DispatchWorkItem?
+    private var latestAudioSettings: AudioSettings?
+    private var pendingSpatialAudioMode: SpatialAudioMode?
 
     init(model: ProbeViewModel) {
         self.model = model
@@ -74,15 +76,18 @@ final class ProbeCentral: NSObject, ObservableObject {
 
         stopScanning(report: false)
         clearPacketQueue()
+        clearLiveAudioState()
         selectedCharacteristic = nil
         selectedPeripheral = peripheral
         peripheral.delegate = self
+        model.handle(.safeWritesConfirmed(false))
         model.handle(.connecting(peripheral.name ?? "Bluetooth device"))
         central.connect(peripheral)
     }
 
     func disconnect() {
         clearPacketQueue()
+        clearLiveAudioState()
         guard let selectedPeripheral else {
             model.handle(.disconnected("No device is connected"))
             return
@@ -102,6 +107,7 @@ final class ProbeCentral: NSObject, ObservableObject {
         guard requireSafeWrites() else { return }
         enqueue(AudioModeMessages.setCurrent(index: id), summary: "Set current mode \(id)")
         enqueue(AudioModeMessages.queryCurrent(), summary: "Confirm current mode")
+        enqueue(AudioSettingsMessages.query(), summary: "Refresh live audio settings")
     }
 
     func setStandby(_ minutes: UInt8) {
@@ -112,8 +118,15 @@ final class ProbeCentral: NSObject, ObservableObject {
 
     func setSpatialAudio(_ mode: SpatialAudioMode) {
         guard requireSafeWrites() else { return }
-        enqueue(SpatialAudioMessages.set(mode), summary: "Set spatial audio")
-        enqueue(SpatialAudioMessages.query(), summary: "Confirm spatial audio")
+
+        // AudioModes SettingsConfig is a five-byte read/modify/write register.
+        // Read it immediately before the write so changing immersive audio cannot
+        // overwrite the active CNC, ActiveSense, wind-block, or ANC values.
+        pendingSpatialAudioMode = mode
+        enqueue(
+            AudioSettingsMessages.query(),
+            summary: "Read live audio settings before spatial change"
+        )
     }
 
     func powerOff() {
@@ -213,10 +226,12 @@ final class ProbeCentral: NSObject, ObservableObject {
             (ProductMessages.queryName(), "Query product name"),
             (BatteryMessages.query(), "Query battery"),
             (AudioModeMessages.queryCapabilities(), "Query mode capabilities"),
-            (AudioModeMessages.queryAll(), "Query mode indexes"),
             (AudioModeMessages.queryCurrent(), "Query current mode"),
             (StandbyMessages.query(), "Query standby"),
-            (SpatialAudioMessages.query(), "Query spatial audio"),
+            (AudioSettingsMessages.query(), "Query live audio settings"),
+            // GetAll is a START command that emits a multi-frame STATUS burst.
+            // Keep it last so no later startup request collides with that burst.
+            (AudioModeMessages.querySnapshot(), "Start AudioModes snapshot"),
         ]
 
         for (packet, summary) in initialQueries {
@@ -249,6 +264,11 @@ final class ProbeCentral: NSObject, ObservableObject {
         packetDrainWorkItem = nil
         queuedPackets.removeAll()
         isDrainingPackets = false
+    }
+
+    private func clearLiveAudioState() {
+        latestAudioSettings = nil
+        pendingSpatialAudioMode = nil
     }
 
     private func writeNow(_ packet: BMAPPacket, summary: String) {
@@ -303,50 +323,66 @@ final class ProbeCentral: NSObject, ObservableObject {
 
         if packet.operator == .error {
             let code = packet.payload.first ?? 0
-            let detail = packet.payload.count > 1 ? " detail 0x\(String(format: "%02X", packet.payload[1]))" : ""
-            model.handle(.error("Device error 0x\(String(format: "%02X", code))\(detail)"))
+            let detail = packet.payload.count > 1
+                ? " detail 0x\(String(format: "%02X", packet.payload[1]))"
+                : ""
+            let address = String(
+                format: "0x%02X/0x%02X",
+                packet.functionBlock.rawValue,
+                packet.function
+            )
+            model.handle(.error(
+                "Device error 0x\(String(format: "%02X", code)) at \(address)\(detail)"
+            ))
             return
         }
 
         do {
             switch (packet.functionBlock, packet.function) {
-            case (.settings, 0x02):
+            case (.settings, 0x02) where packet.operator == .status:
                 model.handle(.identity(try ProductMessages.parseName(packet)))
 
-            case (.status, 0x02):
+            case (.status, 0x02) where packet.operator == .status:
                 model.handle(.battery(try BatteryMessages.parse(packet)))
 
-            case (.audioModes, 0x02):
+            case (.audioModes, 0x02) where packet.operator == .status:
                 model.handle(.capabilities(try AudioModeMessages.parseCapabilities(packet)))
 
-            case (.audioModes, 0x01):
-                let modeIDs = try AudioModeMessages.parseAll(packet)
-                model.handle(.modes(modeIDs))
-                for modeID in modeIDs {
-                    enqueue(
-                        AudioModeMessages.queryConfiguration(index: modeID),
-                        summary: "Query mode \(modeID) configuration"
-                    )
-                }
-
-            case (.audioModes, 0x03):
+            case (.audioModes, 0x03) where packet.operator == .status:
                 model.handle(.currentMode(try AudioModeMessages.parseCurrent(packet)))
 
-            case (.audioModes, 0x06):
+            case (.audioModes, 0x06) where packet.operator == .status:
                 model.handle(.modeConfiguration(try AudioModeMessages.parseConfiguration(packet)))
 
-            case (.settings, 0x04):
+            case (.audioModes, 0x0A) where packet.operator == .status:
+                let settings = try AudioSettingsMessages.parse(packet)
+                latestAudioSettings = settings
+                model.handle(.spatialAudio(settings.spatialAudioMode))
+                applyPendingSpatialAudioChange(using: settings)
+
+            case (.settings, 0x04) where packet.operator == .status:
                 model.handle(.standby(try StandbyMessages.parse(packet)))
 
-            case (.audioManagement, 0x0F):
-                model.handle(.spatialAudio(try SpatialAudioMessages.parse(packet)))
-
             default:
+                // START acknowledgements and unimplemented snapshot fields are
+                // retained in the packet transcript but are not parsed as state.
                 break
             }
         } catch {
             model.handle(.error("Strict parser rejected \(Self.packetSummary(packet)): \(error)"))
         }
+    }
+
+    private func applyPendingSpatialAudioChange(using current: AudioSettings) {
+        guard let requestedMode = pendingSpatialAudioMode else { return }
+        pendingSpatialAudioMode = nil
+
+        let updated = current.replacingSpatialAudioMode(requestedMode)
+        enqueue(
+            AudioSettingsMessages.set(updated),
+            summary: "Set spatial audio while preserving live audio settings"
+        )
+        enqueue(AudioSettingsMessages.query(), summary: "Confirm live audio settings")
     }
 
     private static func packetSummary(_ packet: BMAPPacket) -> String {
@@ -424,6 +460,7 @@ extension ProbeCentral: CBCentralManagerDelegate {
         error: Error?
     ) {
         clearPacketQueue()
+        clearLiveAudioState()
         selectedCharacteristic = nil
         selectedPeripheral = nil
         reassembler = BLEReassembler()
@@ -463,8 +500,12 @@ extension ProbeCentral: CBPeripheralDelegate {
         }
 
         let characteristics = service.characteristics ?? []
-        let secure = characteristics.first(where: { $0.uuid == Self.secureUUID && Self.isControlCharacteristic($0) })
-        let unsecure = characteristics.first(where: { $0.uuid == Self.unsecureUUID && Self.isControlCharacteristic($0) })
+        let secure = characteristics.first(where: {
+            $0.uuid == Self.secureUUID && Self.isControlCharacteristic($0)
+        })
+        let unsecure = characteristics.first(where: {
+            $0.uuid == Self.unsecureUUID && Self.isControlCharacteristic($0)
+        })
 
         guard let selected = secure ?? unsecure else {
             model.handle(.error("No notify-and-write BMAP characteristic is available"))
@@ -486,9 +527,13 @@ extension ProbeCentral: CBPeripheralDelegate {
             return
         }
 
-        guard characteristic.uuid == selectedCharacteristic?.uuid, characteristic.isNotifying else { return }
+        guard characteristic.uuid == selectedCharacteristic?.uuid, characteristic.isNotifying else {
+            return
+        }
         let channel = characteristic.uuid == Self.secureUUID ? "Secure" : "Unsecure"
-        let write = selectedWriteType == .withResponse ? "write with response" : "write without response"
+        let write = selectedWriteType == .withResponse
+            ? "write with response"
+            : "write without response"
         model.handle(.channelReady("\(channel) • notify • \(write)"))
         enqueueInitialQueries()
     }
@@ -503,7 +548,10 @@ extension ProbeCentral: CBPeripheralDelegate {
             return
         }
 
-        guard characteristic.uuid == selectedCharacteristic?.uuid, let data = characteristic.value else { return }
+        guard characteristic.uuid == selectedCharacteristic?.uuid,
+              let data = characteristic.value else {
+            return
+        }
         processNotification([UInt8](data))
     }
 

@@ -3,7 +3,8 @@
 BMAP (Bose Message Access Protocol) is a proprietary protocol used by Bose
 headphones and speakers for device control over Bluetooth. This document
 covers the BLE transport and the message formats relevant to headphone
-control, reverse-engineered from the Bose Music Android app v12.1.6.
+control, reverse-engineered from the Bose Music Android app and checked
+against physical-device captures from open-source Bose control projects.
 
 ## BLE transport
 
@@ -16,7 +17,7 @@ control, reverse-engineered from the Bose Music Android app v12.1.6.
 | `D417C028-9818-4354-99D1-2AC09D074591` | Unsecure read/write/notify |
 
 The app tries the secure characteristic first and falls back to unsecure.
-All communication happens through a single characteristic: the host writes
+All communication happens through one characteristic: the host writes
 commands and subscribes to notifications for responses.
 
 ### MTU
@@ -36,42 +37,27 @@ segment is a BLE write of up to 20 bytes.
 
 **Segment header** (1 byte):
 
-```
+```text
 Bits 7-4: max_segment_index (0 = single segment)
 Bits 3-0: current_segment_index
 ```
 
-**Examples:**
-
 | Header | Meaning |
 |--------|---------|
-| `0x00` | Single unsegmented packet (also acts as the framing byte) |
+| `0x00` | Single unsegmented packet and framing byte |
 | `0x10` | First of 2 segments (max=1, current=0) |
 | `0x11` | Second of 2 segments (max=1, current=1) |
 | `0x20` | First of 3 segments |
 
-Each segment carries up to 19 bytes of payload data after the 1-byte
-header, for a total of 20 bytes per BLE write.
-
-**Reassembly:** collect segments in order, strip the 1-byte header from
-each, concatenate the data portions.
-
-### Write framing
-
-For unsegmented writes, the single-segment header byte `0x00` doubles as
-the BLE write framing byte that the Bose firmware expects. The segmentation
-layer naturally provides this. For segmented writes, the segment headers
-carry the index information and no additional framing is needed.
-
-Bose device responses (BLE notifications) also use segmentation with the
-same header format. Notifications do **not** include an additional framing
-byte beyond the segment header.
+Each segment carries up to 19 bytes after the header. Reassembly collects
+all segments for a packet, removes each segment header, and concatenates the
+remaining bytes. Notifications use the same segmentation format.
 
 ## Packet structure
 
 Every BMAP packet has a 4-byte header followed by a variable-length payload.
 
-```
+```text
 Offset  Size  Field
 0       1     Function Block ID
 1       1     Function ID
@@ -80,16 +66,8 @@ Offset  Size  Field
 4..     N     Payload
 ```
 
-**Byte 2 bit layout:**
-
-```
-Bits 7-6: Device ID (0-3)
-Bits 5-4: Port number (0-3)
-Bits 3-0: Operator ID (0-15)
-```
-
-Device ID and port are typically 0 for headphones. They are used for
-multi-component products (e.g. left/right earbuds, charging case).
+Byte 2 uses bits 7-6 for device ID, bits 5-4 for port, and bits 3-0 for the
+operator. Device ID and port are normally zero for over-ear headphones.
 
 ## Operators
 
@@ -97,262 +75,237 @@ multi-component products (e.g. left/right earbuds, charging case).
 |----|------|-----------|-------------|
 | 0 | Set | Command | Write a value |
 | 1 | Get | Command | Read a value |
-| 2 | SetGet | Command | Write then read back |
-| 3 | Status | Response | Successful response with data |
-| 4 | Error | Response | Error response (payload = error code) |
-| 5 | Start | Command | Initiate an operation |
-| 6 | Result | Response | Operation completed with result |
+| 2 | SetGet | Command | Write then return the resulting value |
+| 3 | Status | Response | Successful state response |
+| 4 | Error | Response | Error response |
+| 5 | Start | Command | Initiate an operation or response stream |
+| 6 | Result | Response | Operation completed |
 | 7 | Processing | Response | Operation in progress |
 
-A typical exchange: host sends Get, device responds with Status. For
-multi-step operations the device may send Processing followed by Result.
+A normal read is GET followed by STATUS. A START command can yield multiple
+STATUS packets before a RESULT packet.
 
 ## Error codes
 
-Error responses (operator 4) carry an error code in the first payload byte.
+Error responses carry the error code in the first payload byte.
 
 | Code | Name | Description |
 |------|------|-------------|
-| 0x00 | Unknown | Generic error |
-| 0x01 | Length | Invalid packet length |
-| 0x02 | Chksum | Invalid checksum |
-| 0x03 | FblockNotSupp | Function block not supported |
-| 0x04 | FuncNotSupp | Function not supported |
-| 0x05 | OpNotSupp | Operator not supported for this function |
-| 0x06 | InvalidData | Invalid data values |
-| 0x07 | DataUnavailable | Requested data not available |
-| 0x08 | Runtime | Temporary read/write failure |
-| 0x09 | Timeout | Operation timed out |
-| 0x0A | InvalidState | Not applicable in current state |
-| 0x0B | DeviceNotFound | Device not in paired list |
-| 0x0C | Busy | Device busy |
-| 0xFF | FblockSpecific | Function-block-specific error; an additional byte follows with the specific code |
+| `0x00` | Unknown | Generic error |
+| `0x01` | Length | Invalid packet length |
+| `0x02` | Chksum | Invalid checksum |
+| `0x03` | FblockNotSupp | Function block not supported |
+| `0x04` | FuncNotSupp | Function not supported |
+| `0x05` | OpNotSupp | Operator not supported for this function |
+| `0x06` | InvalidData | Invalid data values |
+| `0x07` | DataUnavailable | Requested data not available |
+| `0x08` | Runtime | Temporary read/write failure |
+| `0x09` | Timeout | Operation timed out |
+| `0x0A` | InvalidState | Not applicable in the current state |
+| `0x0B` | DeviceNotFound | Device not in paired list |
+| `0x0C` | Busy | Device busy |
+| `0xFF` | FblockSpecific | Additional byte contains a block-specific code |
 
 ## Function blocks
 
 | ID | Name | Purpose |
 |----|------|---------|
-| 0x00 | ProductInfo | Device identification, firmware version, serial |
-| 0x01 | Settings | User configuration (name, timers, buttons, NC) |
-| 0x02 | Status | Real-time state (battery, aux, in-ear) |
-| 0x03 | FirmwareUpdate | OTA update flow |
-| 0x04 | DeviceManagement | Pairing, connection routing, device list |
-| 0x05 | AudioManagement | Audio source, volume, spatial audio |
-| 0x06 | CallManagement | Voice call handling |
-| 0x07 | Control | Power, reset, factory default |
-| 0x08 | Debug | Diagnostic output |
-| 0x09 | Notification | Event subscriptions |
-| 0x0C | HearingAssistance | Hearing aid features |
-| 0x0D | DataCollection | Analytics and telemetry |
-| 0x0E | HeartRate | Biometric sensors (Bose Frames) |
-| 0x10 | Vpa | Voice assistant (Alexa, Google) |
-| 0x11 | Wifi | WiFi configuration (soundbars) |
-| 0x12 | Authentication | Device authentication and encryption |
-| 0x14 | Cloud | Cloud sync and OTA state |
-| 0x1F | AudioModes | Audio mode switching (QC Ultra) |
+| `0x00` | ProductInfo | Device identity and firmware metadata |
+| `0x01` | Settings | User configuration |
+| `0x02` | Status | Real-time state such as battery |
+| `0x03` | FirmwareUpdate | OTA update flow |
+| `0x04` | DeviceManagement | Pairing and connection routing |
+| `0x05` | AudioManagement | Audio source, playback, and volume functions |
+| `0x06` | CallManagement | Voice-call handling |
+| `0x07` | Control | Power and reset operations |
+| `0x08` | Debug | Diagnostic output |
+| `0x09` | Notification | Event subscriptions |
+| `0x0C` | HearingAssistance | Hearing-assistance features |
+| `0x0D` | DataCollection | Analytics and telemetry |
+| `0x0E` | HeartRate | Biometric sensors |
+| `0x10` | Vpa | Voice-assistant configuration |
+| `0x11` | Wifi | Wi-Fi configuration |
+| `0x12` | Authentication | Device authentication |
+| `0x14` | Cloud | Cloud and OTA state |
+| `0x1F` | AudioModes | QC Ultra noise-control and immersive settings |
 
 ---
 
 ## Implemented messages
 
-### ProductInfo (0x00)
-
-#### Product Name -- Settings 0x01 / 0x02
-
-Note: the product name is under the Settings function block despite being
-product info. The ProductInfo block has a separate `OriginalProductName`.
+### Product name — Settings `[1.2]`
 
 | | Packet |
 |---|---|
 | Query | `[0x01, 0x02, 0x01, 0x00]` |
-| Response operator | Status (3) |
-| Payload | `[0x00?, name_bytes...]` -- UTF-8 string, may have leading/trailing null bytes |
+| Response | STATUS |
+| Payload | Optional null framing plus UTF-8 product name |
 
-### Status (0x02)
-
-#### Battery Level -- 0x02
+### Battery level — Status `[2.2]`
 
 | | Packet |
 |---|---|
 | Query | `[0x02, 0x02, 0x01, 0x00]` |
-| Response operator | Status (3) |
+| Response | STATUS |
 
-**Payload** (4 bytes per component, repeating):
+The payload repeats a four-byte component record:
 
-```
+```text
 Offset  Size  Field
 0       1     Battery percentage (0-100)
-1       2     Remaining play time in minutes (big-endian, 0xFFFF = unknown)
-3       1     Component ID (0 = primary, 1+ = case/buds)
+1       2     Remaining play time in minutes, big-endian (FFFF = unknown)
+3       1     Component ID
 ```
 
-Multiple 4-byte chunks for multi-component devices (e.g. earbuds + case).
+### CNC — Settings `[1.5]`
 
-### Settings (0x01)
-
-#### CNC (Noise Cancellation) -- 0x05
-
-Read-only on QC Ultra (SetGet returns error 0x05 OpNotSupp). Use
-AudioModes for mode switching on newer devices.
+This endpoint is read-only on QC Ultra. A legacy SETGET returns `0x05`
+(OpNotSupp); mode switching and live noise-control values use AudioModes.
 
 | | Packet |
 |---|---|
 | Query | `[0x01, 0x05, 0x01, 0x00]` |
-| Set (legacy) | `[0x01, 0x05, 0x02, 0x02, level, enabled]` |
-| Response operator | Status (3) |
+| Legacy set | `[0x01, 0x05, 0x02, 0x02, level, enabled]` |
+| Response | STATUS |
 
-**Response payload** (3 bytes):
-
-```
-Offset  Size  Field
-0       1     Current step (0-255; may exceed total_steps for special modes)
-1       1     Total steps (number of NC levels)
-2       1     Flags:
-              - Bit 0: enabled (1 = on)
-              - Bit 1: user enable/disable allowed (inverted: 0 = allowed)
-```
-
-#### Standby Timer -- 0x04
+### Standby timer — Settings `[1.4]`
 
 | | Packet |
 |---|---|
 | Query | `[0x01, 0x04, 0x01, 0x00]` |
-| Set | `[0x01, 0x04, 0x02, 0x01, minutes]` |
-| Response operator | Status (3) |
+| SetGet | `[0x01, 0x04, 0x02, 0x01, minutes]` |
+| Response | STATUS |
 
-**Payload** (variable, first byte is minutes):
+The first payload byte is the number of minutes; zero means never.
+Common values are 0, 5, 10, 20, 30, 60, and 120.
 
-```
-Offset  Size  Field
-0       1     Minutes until auto-off (0 = never)
-```
-
-Common values: 0, 5, 10, 20, 30, 60, 120.
-
-### Control (0x07)
-
-#### Power -- 0x04
+### Power — Control `[7.4]`
 
 | | Packet |
 |---|---|
 | Power off | `[0x07, 0x04, 0x05, 0x01, 0x00]` |
 | Power on | `[0x07, 0x04, 0x05, 0x01, 0x01]` |
-| Operator | Start (5) |
+| Operator | START |
 
-**Payload** (1 byte):
+Power off normally completes through the expected Bluetooth disconnect.
 
+## AudioModes `[31.x]`
+
+AudioModes is the authoritative QC Ultra block for modes, ANC-related live
+state, and immersive audio.
+
+### GetAll snapshot — `[31.1]`
+
+| | Packet |
+|---|---|
+| Start snapshot | `[0x1F, 0x01, 0x05, 0x00]` |
+| Operator | START, not GET |
+| Response | A burst of STATUS packets for supported AudioModes functions |
+
+`[31.1]` is not a list-valued GET endpoint. Sending
+`[0x1F, 0x01, 0x01, 0x00]` can return `0x05` because GET is not supported.
+The snapshot can include capabilities, current/default mode, one ModeConfig
+packet per stored mode, favorites, live SettingsConfig, and supported names.
+A RESULT packet may terminate the stream. Mode IDs come from byte zero of
+each `[31.6]` ModeConfig payload.
+
+### Capabilities — `[31.2]`
+
+| | Packet |
+|---|---|
+| Query | `[0x1F, 0x02, 0x01, 0x00]` |
+| Response | STATUS |
+
+```text
+Offset  Size  Field
+0       1     Number of Bose modes
+1       1     Number of user modes
+2-4     3     Reserved
+5       1     Feature flags
+6       1     Minimum favorite count, when present
 ```
-0x00 = power off
-0x01 = power on
-```
 
-### AudioModes (0x1F)
+Feature bits are CNC, auto-CNC/ActiveSense, immersive audio, wind block,
+favorites, and ANC toggle in bits 0 through 5.
 
-The AudioModes function block is used by newer Bose products (QC Ultra,
-QC45, NC 700, etc.) for noise control mode switching. It replaces the
-legacy Settings/CNC SetGet path.
-
-#### Current Mode -- 0x03
+### Current mode — `[31.3]`
 
 | | Packet |
 |---|---|
 | Query | `[0x1F, 0x03, 0x01, 0x00]` |
 | Set | `[0x1F, 0x03, 0x05, 0x02, mode_index, voice_prompt]` |
-| Response operator | Status (3) |
+| Response | STATUS for GET; START may acknowledge with RESULT |
 
-**Set payload** (2 bytes):
+The STATUS payload is the current mode index. For SET, the second payload
+byte controls whether the headphones play the mode voice prompt.
 
-```
-Offset  Size  Field
-0       1     Mode index (device-specific, typically 0-4)
-1       1     Play voice prompt (0x00 = no, 0x01 = yes)
-```
-
-**Response payload** (1 byte):
-
-```
-Offset  Size  Field
-0       1     Current mode index
-```
-
-#### Mode Config -- 0x06
-
-Retrieves the full configuration for a specific mode index.
+### ModeConfig — `[31.6]`
 
 | | Packet |
 |---|---|
 | Query | `[0x1F, 0x06, 0x01, 0x01, mode_index]` |
-| Response operator | Status (3) |
+| Response | STATUS |
 
-**Response payload** (up to 48 bytes):
+The QC Ultra configuration payload is at least 48 bytes:
 
-```
+```text
 Offset  Size  Field
 0       1     Mode index
-1       1     Prompt ID byte 1 (always 0x00 for Bose modes)
-2       1     Prompt ID byte 2 (see prompt table below)
+1-2     2     Prompt ID
 3       1     User configurable (0/1)
 4       1     User configured (0/1)
 5       1     Favorite (0/1)
-6       32    Mode name (null-terminated UTF-8)
+6       32    Null-terminated UTF-8 name
 38      3     Reserved
-41      1     Flags:
-              - Bit 0: CNC level mutable
-              - Bit 1: Auto-CNC mutable
-              - Bit 2: Spatial audio mutable
-              - Bit 3: ANR wind toggle mutable
-              - Bit 4: ANC toggle mutable
+41      1     Mutable-field mask
 42      1     CNC level
-43      1     Auto-CNC enabled (0/1)
-44      1     Spatial audio mode
+43      1     Auto-CNC/ActiveSense enabled
+44      1     Immersive mode
 45      1     Reserved
-46      1     Wind block toggle
-47      1     ANC toggle
+46      1     Wind block enabled
+47      1     ANC enabled
 ```
 
-Non-existent mode indices return an Error response.
+The mutable mask uses bits 0-4 for CNC level, auto-CNC, immersive mode, wind
+block, and ANC respectively. Extra trailing bytes must be preserved until
+their meaning is verified.
 
-#### Capabilities -- 0x02
+### Live SettingsConfig — `[31.10]`
+
+This is the live five-byte audio state for the active mode. It is also the
+correct endpoint for changing immersive audio on QC Ultra Headphones.
+AudioManagement `[5.15]` is not the QC Ultra immersive endpoint and a GET
+there can return `0x05`.
 
 | | Packet |
 |---|---|
-| Query | `[0x1F, 0x02, 0x01, 0x00]` |
-| Response operator | Status (3) |
+| Query | `[0x1F, 0x0A, 0x01, 0x00]` |
+| SetGet | `[0x1F, 0x0A, 0x02, 0x05, cnc, auto_cnc, immersive, wind, anc]` |
+| Response | STATUS with the complete five-byte state |
 
-**Response payload** (7+ bytes):
-
-```
-Offset  Size  Field
-0       1     Number of Bose modes
-1       1     Number of user modes
-2-4     3     Reserved
-5       1     Feature flags:
-              - Bit 0: CNC supported
-              - Bit 1: Auto-CNC supported
-              - Bit 2: Spatial audio supported
-              - Bit 3: ANR wind toggle supported
-              - Bit 4: User favorites supported
-              - Bit 5: ANC toggle supported
-6       1     Min simultaneous favorite modes (optional)
+```text
+Offset  Field
+0       CNC level
+1       Auto-CNC/ActiveSense enabled (0/1)
+2       Immersive mode: 0=Off, 1=Still, 2=Motion
+3       Wind block enabled (0/1)
+4       ANC enabled (0/1)
 ```
 
-#### Names Supported -- 0x0B
+A client changing only immersive mode must first read `[31.10]`, replace
+byte two, and write all five bytes back. Sending a one-byte spatial payload
+would risk replacing or invalidating the other live settings.
 
-Returns a bitmap of which mode prompt IDs the device supports.
+### Names supported — `[31.11]`
 
 | | Packet |
 |---|---|
 | Query | `[0x1F, 0x0B, 0x01, 0x00]` |
-| Response operator | Status (3) |
+| Response | STATUS |
 
-**Response payload** (up to 5 bytes): bitmap where each bit represents
-a prompt ID. Byte 0 bit 0 = prompt 0, byte 0 bit 1 = prompt 1, etc.
+The payload is a bitmap of supported spoken mode prompt IDs.
 
-### Audio mode prompt table
-
-The Bose app defines 36 named audio mode prompts. These are the names
-the headset can announce via voice prompt, indexed by the prompt ID
-in the ModeConfig response (byte 2):
+### Audio-mode prompt table
 
 | ID | Name | ID | Name | ID | Name |
 |----|------|----|------|----|------|
@@ -370,32 +323,24 @@ in the ModeConfig response (byte 2):
 | 11 | Work | 24 | Call | 36 | Cinema |
 | 12 | Music | | | | |
 
-Note: the prompt ID is **not** the same as the mode index. Each device
-mode has its own index (typically 0-4 on QC Ultra) and maps to a prompt
-ID via the ModeConfig response. Mode names can also be custom strings
-set by the user in the Bose app.
+Prompt ID and mode index are different values. ModeConfig maps a stored mode
+index to its prompt ID and optional custom name.
 
 ---
 
 ## Not yet implemented
 
-These function blocks and functions are defined in the protocol but not
-yet used by bozo:
-
-- **DeviceManagement (0x04)**: Device list, pairing mode, multipoint routing
-- **AudioManagement (0x05)**: Volume, now playing, spatial audio
-- **FirmwareUpdate (0x03)**: OTA update flow
-- **Authentication (0x12)**: Challenge-response device auth
-- **Notification (0x09)**: Event subscription system
-- **VPA (0x10)**: Voice assistant configuration
-- **Settings**: Buttons, multipoint, on-head detection, voice prompts, ANR
+- DeviceManagement pairing, routing, and paired-device list
+- AudioManagement playback/source/volume functions
+- FirmwareUpdate OTA flow
+- Authentication challenge-response
+- Notification subscriptions
+- Voice-assistant configuration
+- Remaining Settings endpoints such as buttons, multipoint, and wear sensing
 
 ## References
 
-- Protocol details derived from Bose Music APK v12.1.6 (decompiled with jadx)
-- Key source files in the APK:
-  - `com.bose.bmap.messages.packets.*` -- packet constructors
-  - `com.bose.bmap.messages.responses.*` -- response parsers
-  - `com.bose.bmap.messages.enums.spec.*` -- protocol constants
-  - `com.bose.bmap.ble.BleConnectionManager` -- BLE connection and framing
-  - `com.bose.bmap.utils.PacketSegmentationUtil` -- segmentation
+- Bose Music Android app v12.1.6 decompilation (`com.bose.bmap.*`)
+- `depau/bosectl-android` protocol notes and QC Ultra-family captures
+- `aaronsb/bosectl` QC Ultra Headphones implementation and captures
+- Physical validation performed through the sandboxed Ultra Controller probe

@@ -1,0 +1,11 @@
+{
+  "name": "audio-settings-still-set",
+  "direction": "request",
+  "wireHex": "1F0A02050700010101",
+  "expected": {
+    "functionBlock": 31,
+    "function": 10,
+    "operator": 2,
+    "payloadHex": "0700010101"
+  }
+}

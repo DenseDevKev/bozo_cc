@@ -1,0 +1,11 @@
+{
+  "name": "audio-settings-query",
+  "direction": "request",
+  "wireHex": "1F0A0100",
+  "expected": {
+    "functionBlock": 31,
+    "function": 10,
+    "operator": 1,
+    "payloadHex": ""
+  }
+}

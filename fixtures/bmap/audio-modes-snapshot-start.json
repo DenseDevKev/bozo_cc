@@ -1,0 +1,11 @@
+{
+  "name": "audio-modes-snapshot-start",
+  "direction": "request",
+  "wireHex": "1F010500",
+  "expected": {
+    "functionBlock": 31,
+    "function": 1,
+    "operator": 5,
+    "payloadHex": ""
+  }
+}
