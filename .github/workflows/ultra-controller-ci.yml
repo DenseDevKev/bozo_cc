@@ -21,7 +21,7 @@ concurrency:
   cancel-in-progress: true
 
 jobs:
-  project-contract:
+  build-and-test:
     runs-on: xcode-27
     steps:
       - name: Check out repository
@@ -33,5 +33,34 @@ jobs:
           xcodebuild -version
           swift --version
 
+      - name: Install XcodeGen
+        run: brew bundle --file apps/macos/UltraController/Brewfile
+
+      - name: Generate Xcode project
+        run: make macos-generate
+
       - name: Verify project contract
         run: apps/macos/UltraController/Scripts/verify-project.sh
+
+      - name: Commit generated project
+        if: github.actor != 'github-actions[bot]' && github.ref == 'refs/heads/feat/ultra-controller'
+        run: |
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add apps/macos/UltraController/UltraController.xcodeproj
+          if ! git diff --cached --quiet; then
+            git commit -m 'chore: generate Ultra Controller Xcode project [skip ci]'
+            git push
+          fi
+
+      - name: Test existing Rust workspace
+        run: cargo test --workspace
+
+      - name: Test HeadphoneCore package
+        run: make macos-test-core
+
+      - name: Test macOS application
+        run: make macos-test
+
+      - name: Build macOS application
+        run: make macos-build

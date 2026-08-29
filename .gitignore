@@ -14,3 +14,13 @@ target/
 
 # Decompiled APK (not redistributable)
 vendor/
+
+# macOS / Xcode
+DerivedData/
+*.xcuserstate
+xcuserdata/
+.swiftpm/
+.build/
+apps/macos/UltraController/build/
+apps/macos/UltraController/.xcodegen-cache/
+apps/macos/UltraController/Config/Local.xcconfig

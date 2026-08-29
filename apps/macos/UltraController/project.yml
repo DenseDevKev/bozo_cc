@@ -1,0 +1,107 @@
+name: UltraController
+
+options:
+  deploymentTarget:
+    macOS: "27.0"
+  createIntermediateGroups: true
+  groupSortPosition: top
+
+configs:
+  Debug: debug
+  Release: release
+
+configFiles:
+  Debug: Config/Debug.xcconfig
+  Release: Config/Release.xcconfig
+
+packages:
+  HeadphoneCore:
+    path: Packages/HeadphoneCore
+
+targets:
+  UltraController:
+    type: application
+    platform: macOS
+    sources:
+      - path: App
+    resources:
+      - path: Config/PrivacyInfo.xcprivacy
+    info:
+      path: Config/Info.plist
+    entitlements:
+      path: Config/App.entitlements
+    dependencies:
+      - package: HeadphoneCore
+    settings:
+      base:
+        PRODUCT_BUNDLE_IDENTIFIER: dev.densedevkev.ultracontroller
+        PRODUCT_NAME: Ultra Controller
+        PRODUCT_MODULE_NAME: UltraController
+        ARCHS: arm64
+        SUPPORTED_PLATFORMS: macosx
+
+  UltraControllerProtocolProbe:
+    type: application
+    platform: macOS
+    sources:
+      - path: ProtocolProbe
+    info:
+      path: Config/Info.plist
+    entitlements:
+      path: Config/Probe.entitlements
+    dependencies:
+      - package: HeadphoneCore
+    settings:
+      base:
+        PRODUCT_BUNDLE_IDENTIFIER: dev.densedevkev.ultracontroller.probe
+        PRODUCT_NAME: Ultra Controller Protocol Probe
+        PRODUCT_MODULE_NAME: UltraControllerProtocolProbe
+        ARCHS: arm64
+        SUPPORTED_PLATFORMS: macosx
+
+  UltraControllerTests:
+    type: bundle.unit-test
+    platform: macOS
+    sources:
+      - path: Tests
+    dependencies:
+      - target: UltraController
+      - package: HeadphoneCore
+    settings:
+      base:
+        PRODUCT_BUNDLE_IDENTIFIER: dev.densedevkev.ultracontroller.tests
+        PRODUCT_MODULE_NAME: UltraControllerTests
+        ARCHS: arm64
+
+  UltraControllerUITests:
+    type: bundle.ui-testing
+    platform: macOS
+    sources:
+      - path: UITests
+    dependencies:
+      - target: UltraController
+    settings:
+      base:
+        PRODUCT_BUNDLE_IDENTIFIER: dev.densedevkev.ultracontroller.uitests
+        PRODUCT_MODULE_NAME: UltraControllerUITests
+        ARCHS: arm64
+
+schemes:
+  UltraController:
+    build:
+      targets:
+        UltraController: all
+        UltraControllerTests: [test]
+        UltraControllerUITests: [test]
+    test:
+      gatherCoverageData: true
+      targets:
+        - UltraControllerTests
+        - UltraControllerUITests
+
+  UltraControllerProtocolProbe:
+    build:
+      targets:
+        UltraControllerProtocolProbe: all
+    run:
+      config: Debug

@@ -5,8 +5,12 @@ RELEASE_APP = target/release/bundle/osx/bozo.app
 RELEASE_BIN = $(RELEASE_APP)/Contents/MacOS/bozo
 RELEASE_DAEMON_BIN = $(RELEASE_APP)/Contents/MacOS/bozod
 
-.PHONY: build release run scan debug test clean grant-bluetooth
+ULTRA_DIR = apps/macos/UltraController
+ULTRA_PROJECT = $(ULTRA_DIR)/UltraController.xcodeproj
+ULTRA_DESTINATION ?= platform=macOS,arch=arm64
 
+.PHONY: build release run scan debug test clean grant-bluetooth \
+	macos-generate macos-build macos-test macos-test-core macos-probe
 
 build:
 	cargo build -p bozod -p bozo
@@ -36,5 +40,36 @@ grant-bluetooth: build
 test:
 	cargo test
 
+macos-generate:
+	cd $(ULTRA_DIR) && xcodegen generate --spec project.yml
+
+macos-test-core:
+	cd $(ULTRA_DIR)/Packages/HeadphoneCore && swift test
+
+macos-build: macos-generate
+	xcodebuild -project $(ULTRA_PROJECT) \
+		-scheme UltraController \
+		-configuration Debug \
+		-destination '$(ULTRA_DESTINATION)' \
+		CODE_SIGNING_ALLOWED=NO \
+		build
+
+macos-test: macos-generate
+	xcodebuild -project $(ULTRA_PROJECT) \
+		-scheme UltraController \
+		-configuration Debug \
+		-destination '$(ULTRA_DESTINATION)' \
+		CODE_SIGNING_ALLOWED=NO \
+		test
+
+macos-probe: macos-generate
+	xcodebuild -project $(ULTRA_PROJECT) \
+		-scheme UltraControllerProtocolProbe \
+		-configuration Debug \
+		-destination '$(ULTRA_DESTINATION)' \
+		build
+	open $(HOME)/Library/Developer/Xcode/DerivedData/UltraController-*/Build/Products/Debug/'Ultra Controller Protocol Probe.app'
+
 clean:
 	cargo clean
+	rm -rf $(ULTRA_DIR)/build
