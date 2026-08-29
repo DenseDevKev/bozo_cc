@@ -7,13 +7,24 @@ final class EssentialMessageTests: XCTestCase {
         XCTAssertEqual(try BatteryMessages.query().encoded(), [0x02, 0x02, 0x01, 0x00])
         XCTAssertEqual(try StandbyMessages.query().encoded(), [0x01, 0x04, 0x01, 0x00])
         XCTAssertEqual(try StandbyMessages.set(minutes: 30).encoded(), [0x01, 0x04, 0x02, 0x01, 0x1E])
-        XCTAssertEqual(try AudioModeMessages.queryAll().encoded(), [0x1F, 0x01, 0x01, 0x00])
+        XCTAssertEqual(try AudioModeMessages.querySnapshot().encoded(), [0x1F, 0x01, 0x05, 0x00])
         XCTAssertEqual(try AudioModeMessages.queryCapabilities().encoded(), [0x1F, 0x02, 0x01, 0x00])
         XCTAssertEqual(try AudioModeMessages.queryCurrent().encoded(), [0x1F, 0x03, 0x01, 0x00])
         XCTAssertEqual(try AudioModeMessages.queryConfiguration(index: 2).encoded(), [0x1F, 0x06, 0x01, 0x01, 0x02])
         XCTAssertEqual(try AudioModeMessages.setCurrent(index: 2).encoded(), [0x1F, 0x03, 0x05, 0x02, 0x02, 0x00])
-        XCTAssertEqual(try SpatialAudioMessages.query().encoded(), [0x05, 0x0F, 0x01, 0x00])
-        XCTAssertEqual(try SpatialAudioMessages.set(.motion).encoded(), [0x05, 0x0F, 0x02, 0x01, 0x02])
+        XCTAssertEqual(try AudioSettingsMessages.query().encoded(), [0x1F, 0x0A, 0x01, 0x00])
+
+        let audioSettings = AudioSettings(
+            cncLevel: 7,
+            autoCNCEnabled: false,
+            spatialAudioMode: .motion,
+            windBlockEnabled: true,
+            ancEnabled: true
+        )
+        XCTAssertEqual(
+            try AudioSettingsMessages.set(audioSettings).encoded(),
+            [0x1F, 0x0A, 0x02, 0x05, 0x07, 0x00, 0x02, 0x01, 0x01]
+        )
         XCTAssertEqual(try PowerMessages.powerOff().encoded(), [0x07, 0x04, 0x05, 0x01, 0x00])
     }
 
