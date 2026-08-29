@@ -16,6 +16,7 @@
 		480B8E92B923D005048FD069 /* HeadphoneCore in Frameworks */ = {isa = PBXBuildFile; productRef = 6B5AE84B8E68E39C1A371FF0 /* HeadphoneCore */; };
 		48218DFA94DE1FCAB376EF2D /* XCTestAsyncSupport.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7E0D4FE536C065BDBA5F0584 /* XCTestAsyncSupport.swift */; };
 		5BC63217768A58B07DA373B0 /* HeadphoneCore in Frameworks */ = {isa = PBXBuildFile; productRef = 4C5686A4EBB2B827C72344F2 /* HeadphoneCore */; };
+		DFED2C604671A3ED4087BA09 /* ProtocolProbeReducerTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 52F7FD5FC276442B6CF090EA /* ProtocolProbeReducerTests.swift */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXContainerItemProxy section */
@@ -37,6 +38,7 @@
 
 /* Begin PBXFileReference section */
 		23B744037CA326868E989EAA /* UltraControllerUITestSmokeTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = UltraControllerUITestSmokeTests.swift; sourceTree = "<group>"; };
+		52F7FD5FC276442B6CF090EA /* ProtocolProbeReducerTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ProtocolProbeReducerTests.swift; sourceTree = "<group>"; };
 		5EB3C299506ABC31EEBB7774 /* UltraController.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = UltraController.app; sourceTree = BUILT_PRODUCTS_DIR; };
 		6569A39AA70B1C43BA1E04A5 /* UltraControllerUITests.xctest */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = UltraControllerUITests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
 		7E0D4FE536C065BDBA5F0584 /* XCTestAsyncSupport.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = XCTestAsyncSupport.swift; sourceTree = "<group>"; };
@@ -91,6 +93,7 @@
 			isa = PBXGroup;
 			children = (
 				1DE48DEC0F047FE8986A4D4A /* TestSupport */,
+				52F7FD5FC276442B6CF090EA /* ProtocolProbeReducerTests.swift */,
 				8F607B0B0829BCB5E2EC7619 /* UltraControllerSmokeTests.swift */,
 			);
 			path = Tests;
@@ -315,6 +318,7 @@
 			isa = PBXSourcesBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
+				DFED2C604671A3ED4087BA09 /* ProtocolProbeReducerTests.swift in Sources */,
 				359534B18F0B7B8525D3655E /* UltraControllerSmokeTests.swift in Sources */,
 				48218DFA94DE1FCAB376EF2D /* XCTestAsyncSupport.swift in Sources */,
 			);
